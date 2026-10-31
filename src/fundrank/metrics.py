@@ -1,11 +1,7 @@
 """Return and risk metric calculations."""
 import numpy as np
 import pandas as pd
-from .config import (
-    MIN_ANNUALIZED_RISK_DENOMINATOR,
-    RISK_FREE_RATE,
-    TRADING_DAYS,
-)
+from .config import MIN_ANNUALIZED_RISK_DENOMINATOR, RISK_FREE_RATE, TRADING_DAYS
 
 
 def _nav_at_or_before(group, target):
@@ -13,11 +9,8 @@ def _nav_at_or_before(group, target):
     return float(eligible.iloc[-1]) if not eligible.empty else np.nan
 
 
-def calculate_fund_metrics(
-    nav,
-    risk_free_rate=RISK_FREE_RATE,
-    min_risk_denominator=MIN_ANNUALIZED_RISK_DENOMINATOR,
-):
+def calculate_fund_metrics(nav, risk_free_rate=RISK_FREE_RATE,
+                           min_risk_denominator=MIN_ANNUALIZED_RISK_DENOMINATOR):
     required = {"scheme_code", "date", "nav_clean"}
     missing = required.difference(nav.columns)
     if missing:
@@ -45,43 +38,26 @@ def calculate_fund_metrics(
             "observations": int(len(group)),
             "total_return": latest / float(values.iloc[0]) - 1,
         }
-
         for label, months in periods.items():
             base = _nav_at_or_before(group, as_of - pd.DateOffset(months=months))
-            row[f"return_{label}"] = (
-                latest / base - 1 if np.isfinite(base) and base > 0 else np.nan
-            )
+            row[f"return_{label}"] = latest / base - 1 if np.isfinite(base) and base > 0 else np.nan
 
         std = float(daily.std(ddof=1)) if len(daily) > 1 else np.nan
         annual_mean = float(daily.mean() * TRADING_DAYS) if len(daily) else np.nan
         annual_vol = std * np.sqrt(TRADING_DAYS) if np.isfinite(std) else np.nan
         row["volatility"] = annual_vol
         row["max_drawdown"] = float((values / values.cummax() - 1).min())
-
-        # Do not report unstable ratios when the annualised denominator is
-        # below the configured floor (default: 0.5%).
+        # A near-zero denominator makes a risk-adjusted ratio numerically unstable.
         row["sharpe_ratio"] = (
             (annual_mean - risk_free_rate) / annual_vol
-            if np.isfinite(annual_vol) and annual_vol >= min_risk_denominator
-            else np.nan
+            if np.isfinite(annual_vol) and annual_vol >= min_risk_denominator else np.nan
         )
-
-        # Target-zero downside deviation: RMS of min(daily return, 0),
-        # including zero contributions from positive days.
         downside = np.minimum(daily.to_numpy(dtype=float), 0.0)
-        downside_dev = (
-            float(np.sqrt(np.mean(np.square(downside)))) if len(downside) else np.nan
-        )
-        annual_downside = (
-            downside_dev * np.sqrt(TRADING_DAYS)
-            if np.isfinite(downside_dev)
-            else np.nan
-        )
+        downside_dev = float(np.sqrt(np.mean(np.square(downside)))) if len(downside) else np.nan
+        annual_downside = downside_dev * np.sqrt(TRADING_DAYS) if np.isfinite(downside_dev) else np.nan
         row["sortino_ratio"] = (
             (annual_mean - risk_free_rate) / annual_downside
-            if np.isfinite(annual_downside)
-            and annual_downside >= min_risk_denominator
-            else np.nan
+            if np.isfinite(annual_downside) and annual_downside >= min_risk_denominator else np.nan
         )
         rows.append(row)
 
