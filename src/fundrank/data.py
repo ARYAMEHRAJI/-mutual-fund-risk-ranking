@@ -5,6 +5,7 @@ import pandas as pd
 import requests
 from .config import API_BASE_URL, API_BATCH_SIZE, API_REQUEST_DELAY, API_TIMEOUT, MIN_HISTORY_YEARS, MAX_NAV_STALENESS_DAYS
 
+
 class TigzigClient:
     def __init__(self, base_url=API_BASE_URL, timeout=API_TIMEOUT):
         self.base_url = base_url.rstrip("/")
@@ -21,12 +22,17 @@ class TigzigClient:
         response = self._get(f"{self.base_url}/download", {"format": "latest"})
         return pd.read_csv(StringIO(response.text))
 
-    def eligible_funds(self, metadata=None):
+    def eligible_funds(self, metadata=None, as_of_date=None):
         funds = self.latest_funds() if metadata is None else metadata.copy()
         required = {"scheme_code", "is_active", "scheme_plan", "scheme_option", "scheme_type", "first_date"}
         missing = required.difference(funds.columns)
         if missing:
             raise ValueError(f"Metadata is missing required columns: {sorted(missing)}")
+        if as_of_date is None:
+            as_of_date = pd.Timestamp.now(tz="Asia/Kolkata").normalize().tz_localize(None)
+        as_of_date = pd.Timestamp(as_of_date)
+        as_of_date = as_of_date.tz_localize(None) if as_of_date.tzinfo else as_of_date
+        as_of_date = as_of_date.normalize()
         active = funds["is_active"].astype(str).str.lower().isin({"true", "1", "yes"})
         mask = (active & funds["scheme_plan"].astype(str).str.casefold().eq("direct")
                 & funds["scheme_option"].astype(str).str.casefold().eq("growth")
@@ -35,11 +41,15 @@ class TigzigClient:
         selected["first_date"] = pd.to_datetime(selected["first_date"], errors="coerce")
         if "last_date" in selected:
             selected["last_date"] = pd.to_datetime(selected["last_date"], errors="coerce")
-            as_of = selected["last_date"].max()
-            # Exclude stale NAV histories rather than treating old prices as current.
-            selected = selected.loc[selected["last_date"] >= as_of - pd.Timedelta(days=MAX_NAV_STALENESS_DAYS)].copy()
+            # A metadata date later than today's India-local date is not a valid freshness anchor.
+            selected = selected.loc[selected["last_date"] <= as_of_date].copy()
+            if selected.empty:
+                return selected.reset_index(drop=True)
+            latest_valid_date = selected["last_date"].max()
+            selected = selected.loc[selected["last_date"] >= latest_valid_date - pd.Timedelta(days=MAX_NAV_STALENESS_DAYS)].copy()
+            as_of = latest_valid_date
         else:
-            as_of = pd.Timestamp.now().normalize()
+            as_of = as_of_date
         cutoff = as_of - pd.DateOffset(years=MIN_HISTORY_YEARS)
         return selected.loc[selected["first_date"].le(cutoff)].reset_index(drop=True)
 
