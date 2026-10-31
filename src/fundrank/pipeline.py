@@ -11,7 +11,6 @@ from .evaluation import evaluate_rankings, evaluate_out_of_sample, weight_sensit
 def run_pipeline(output_dir="data/processed", refresh=True):
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
-    # Use one consistent India-local calendar date for metadata and NAV validation.
     as_of_date = pd.Timestamp.now(tz="Asia/Kolkata").normalize().tz_localize(None)
     client = TigzigClient()
     metadata = client.latest_funds()
@@ -68,8 +67,9 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     print(f"Excluded future-dated NAV rows: {len(future_nav):,}")
     print(f"Pipeline complete: {len(ranked):,} funds")
     print(f"Latest NAV date: {pd.to_datetime(cleaned['date']).max()}")
-    print(
-        "Out-of-sample evaluations: "
-        f"{int((out_of_sample.get('evaluation_status', pd.Series(dtype=str)) == 'evaluated').sum()):,}"
+    evaluated = (
+        int(out_of_sample["evaluation_status"].eq("evaluated").sum())
+        if not out_of_sample.empty else 0
     )
+    print(f"Out-of-sample evaluation rows: {evaluated:,}")
     return ranked
