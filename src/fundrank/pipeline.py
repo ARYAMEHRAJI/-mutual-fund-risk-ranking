@@ -4,7 +4,7 @@ from .cleaning import correct_scale_anomalies, validate_nav
 from .data import TigzigClient
 from .metrics import calculate_fund_metrics
 from .scoring import build_rankings
-from .evaluation import evaluate_rankings
+from .evaluation import evaluate_rankings, weight_sensitivity
 
 def run_pipeline(output_dir="data/processed", refresh=True):
     output = Path(output_dir)
@@ -35,4 +35,7 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     ranked.to_parquet(output / "fund_rankings.parquet", index=False)
     evaluation = evaluate_rankings(ranked)
     evaluation.to_csv(output / "ranking_evaluation.csv", index=False)
+    sensitivity = [weight_sensitivity(ranked, profile=name, simulations=100) for name in ["Conservative", "Moderate", "Growth", "Aggressive"]]
+    import pandas as pd
+    pd.concat(sensitivity, ignore_index=True).to_csv(output / "weight_sensitivity.csv", index=False)
     return ranked
