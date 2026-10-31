@@ -3,7 +3,7 @@ import time
 from io import StringIO
 import pandas as pd
 import requests
-from .config import API_BASE_URL, API_BATCH_SIZE, API_REQUEST_DELAY, API_TIMEOUT, MIN_HISTORY_YEARS
+from .config import API_BASE_URL, API_BATCH_SIZE, API_REQUEST_DELAY, API_TIMEOUT, MIN_HISTORY_YEARS, MAX_NAV_STALENESS_DAYS
 
 class TigzigClient:
     def __init__(self, base_url=API_BASE_URL, timeout=API_TIMEOUT):
@@ -36,6 +36,8 @@ class TigzigClient:
         if "last_date" in selected:
             selected["last_date"] = pd.to_datetime(selected["last_date"], errors="coerce")
             as_of = selected["last_date"].max()
+            # Exclude stale NAV histories rather than treating old prices as current.
+            selected = selected.loc[selected["last_date"] >= as_of - pd.Timedelta(days=MAX_NAV_STALENESS_DAYS)].copy()
         else:
             as_of = pd.Timestamp.now().normalize()
         cutoff = as_of - pd.DateOffset(years=MIN_HISTORY_YEARS)
