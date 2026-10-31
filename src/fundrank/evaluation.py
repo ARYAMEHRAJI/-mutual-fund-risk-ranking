@@ -20,7 +20,7 @@ def evaluate_rankings(ranked, top_n=10):
                 "ranking_group": group_name,
                 "profile": profile,
                 "funds_with_valid_scores": int(valid.shape[0]),
-                "spearman_vs_12m_return": valid[composite_col].corr(valid["return_12m"], method="spearman") if len(valid) > 1 else np.nan,
+                "spearman_vs_12m_return": valid[composite_col].rank(method="average").corr(valid["return_12m"].rank(method="average")) if len(valid) > 1 else np.nan,
                 "top_n": top_n,
                 "top_n_overlap_count": overlap,
                 "top_n_overlap_ratio": overlap / len(baseline_ids) if baseline_ids else np.nan,
