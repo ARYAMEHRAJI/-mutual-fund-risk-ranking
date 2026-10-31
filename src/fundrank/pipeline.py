@@ -58,8 +58,10 @@ def run_pipeline(output_dir="data/processed", refresh=True):
         output / "weight_sensitivity.csv", index=False
     )
 
+    # Pass validated raw NAV so each historical formation date can be
+    # cleaned independently without seeing observations from its future.
     out_of_sample = evaluate_out_of_sample(
-        cleaned, eligible_meta, as_of_date=as_of_date,
+        nav, eligible_meta, as_of_date=as_of_date,
         horizon_months=12, windows=3,
     )
     out_of_sample.to_csv(output / "out_of_sample_evaluation.csv", index=False)
