@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: "30 2 * * 1-5"
 permissions:
-  contents: read
+  contents: write
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -26,3 +26,14 @@ jobs:
           name: mutual-fund-rankings
           path: data/processed/
           retention-days: 14
+      - name: Commit dated full-universe metadata snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add metadata_snapshots/
+          if ! git diff --cached --quiet; then
+            git commit -m "data: archive scheme metadata snapshot"
+            git push
+          else
+            echo "No new metadata snapshot to commit."
+          fi
