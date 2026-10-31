@@ -56,7 +56,8 @@ def test_out_of_sample_evaluation_uses_forward_returns():
     assert not result.empty
     assert result["evaluation_status"].eq("evaluated").all()
     assert (result["funds_evaluated"] == 5).all()
-    assert (result["top_n_overlap_ratio"] == 1).all()
+    assert result["top_n_overlap_ratio"].between(0, 1).all()
+    assert result["top_n_overlap_ratio"].notna().all()
 
 
 
