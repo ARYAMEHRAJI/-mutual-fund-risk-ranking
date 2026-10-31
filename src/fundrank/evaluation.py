@@ -2,7 +2,8 @@
 import numpy as np
 import pandas as pd
 from .config import MAX_NAV_STALENESS_DAYS, MIN_HISTORY_YEARS, PROFILE_WEIGHTS
-from .scoring import MIN_PEER_GROUP_SIZE
+from .scoring import MIN_PEER_GROUP_SIZE, build_rankings
+from .cleaning import correct_scale_anomalies
 
 
 def _spearman_corr(left, right):
@@ -91,52 +92,100 @@ def weight_sensitivity(
     return pd.concat(results).reset_index(drop=True) if results else pd.DataFrame()
 
 
-def evaluate_out_of_sample(
-    nav, metadata, as_of_date=None, horizon_months=12, windows=3,
-    min_history_years=MIN_HISTORY_YEARS, top_n=10,
-):
-    """Evaluate formation-date rankings against returns earned after formation.
-
-    Uses rolling annual formation dates. Current metadata is reused, so the
-    result has survivorship and taxonomy look-ahead limitations.
-    """
+def _build_formation_rankings(nav, metadata, formation_date, min_history_years):
+    """Build rankings using only raw NAV observations available by formation_date."""
     from .metrics import calculate_fund_metrics
-    from .scoring import build_rankings
 
-    required = {"scheme_code", "date", "nav_clean"}
-    missing = required.difference(nav.columns)
-    if missing:
-        raise ValueError(f"Clean NAV data is missing columns: {sorted(missing)}")
-    if horizon_months < 1 or windows < 1:
-        raise ValueError("horizon_months and windows must be positive")
+    history_raw = nav.loc[nav["date"] <= formation_date].copy()
+    if history_raw.empty:
+        return pd.DataFrame(), pd.DataFrame()
 
-    data = nav.copy()
-    data["date"] = pd.to_datetime(data["date"])
-    data = data.sort_values(["scheme_code", "date"])
-    as_of = pd.Timestamp(as_of_date) if as_of_date is not None else data["date"].max()
-    as_of = as_of.normalize()
+    # Crucially, anomaly detection sees no observations after the formation date.
+    history_clean, _ = correct_scale_anomalies(history_raw)
+    metrics = calculate_fund_metrics(history_clean)
+    history_cutoff = formation_date - pd.DateOffset(years=min_history_years)
+    metrics = metrics.loc[
+        (pd.to_datetime(metrics["first_date"]) <= history_cutoff)
+        & (
+            pd.to_datetime(metrics["last_date"])
+            >= formation_date - pd.Timedelta(days=MAX_NAV_STALENESS_DAYS)
+        )
+    ].copy()
+    if metrics.empty:
+        return pd.DataFrame(), history_clean
+
     meta_cols = [
         col for col in [
             "scheme_code", "category_group_clean", "category_sub", "amc",
             "scheme_plan", "scheme_option",
         ] if col in metadata.columns
     ]
+    if "scheme_code" not in meta_cols:
+        raise ValueError("Metadata is missing required column: scheme_code")
     meta = metadata[meta_cols].drop_duplicates("scheme_code")
-    rows = []
+    ranked = build_rankings(metrics.merge(meta, on="scheme_code", how="left"))
+    return ranked, history_clean
 
+
+def evaluate_out_of_sample(
+    nav, metadata, as_of_date=None, horizon_months=12, windows=3,
+    min_history_years=MIN_HISTORY_YEARS, top_n=10,
+):
+    """Evaluate formation-date rankings against returns earned after formation.
+
+    Feature cleaning and ranking are point-in-time: each formation only sees raw
+    NAV observations dated on or before that formation. Forward-period NAV is
+    cleaned separately through the evaluation date solely to measure outcomes.
+    Current metadata is reused, so survivorship and taxonomy look-ahead remain.
+    """
+    required = {"scheme_code", "date", "nav"}
+    missing = required.difference(nav.columns)
+    if missing:
+        raise ValueError(f"Raw NAV data is missing columns: {sorted(missing)}")
+    if horizon_months < 1 or windows < 1:
+        raise ValueError("horizon_months and windows must be positive")
+    if "scheme_code" not in metadata.columns:
+        raise ValueError("Metadata is missing required column: scheme_code")
+
+    data = nav.copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data["scheme_code"] = pd.to_numeric(data["scheme_code"], errors="coerce")
+    data["nav"] = pd.to_numeric(data["nav"], errors="coerce")
+    data = data.dropna(subset=["scheme_code", "date", "nav"])
+    data = data.loc[data["nav"] > 0].copy()
+    data["scheme_code"] = data["scheme_code"].astype("int64")
+    data = data.sort_values(["scheme_code", "date"])
+    as_of = pd.Timestamp(as_of_date) if as_of_date is not None else data["date"].max()
+    as_of = as_of.normalize()
+
+    rows = []
     for window_index in range(1, windows + 1):
         formation = as_of - pd.DateOffset(months=horizon_months * window_index)
         evaluation_date = formation + pd.DateOffset(months=horizon_months)
         if evaluation_date > as_of:
             continue
 
+        ranked, formation_clean = _build_formation_rankings(
+            data, metadata, formation, min_history_years
+        )
+        if ranked.empty:
+            continue
+
+        # Use the formation-time cleaned NAV as the investable starting value.
+        # Clean each target series only through its evaluation date; those
+        # observations are outcomes, never inputs to the formation ranking.
         forward_returns = {}
         for code, group in data.groupby("scheme_code", sort=False):
-            before = group.loc[group["date"] <= formation]
-            through_end = group.loc[group["date"] <= evaluation_date]
-            if before.empty or through_end.empty:
+            base_group = formation_clean.loc[
+                formation_clean["scheme_code"].eq(code)
+                & (formation_clean["date"] <= formation)
+            ]
+            target_raw = group.loc[group["date"] <= evaluation_date].copy()
+            if base_group.empty or target_raw.empty:
                 continue
-            base_row, end_row = before.iloc[-1], through_end.iloc[-1]
+            target_clean, _ = correct_scale_anomalies(target_raw)
+            base_row = base_group.iloc[-1]
+            end_row = target_clean.iloc[-1]
             if (
                 (formation - base_row["date"]).days > MAX_NAV_STALENESS_DAYS
                 or (evaluation_date - end_row["date"]).days > MAX_NAV_STALENESS_DAYS
@@ -148,21 +197,11 @@ def evaluate_out_of_sample(
                 float(end_row["nav_clean"]) / float(base_row["nav_clean"]) - 1
             )
 
-        history = data.loc[data["date"] <= formation].copy()
-        if history.empty or not forward_returns:
-            continue
-        metrics = calculate_fund_metrics(history)
-        history_cutoff = formation - pd.DateOffset(years=min_history_years)
-        metrics = metrics.loc[
-            (pd.to_datetime(metrics["first_date"]) <= history_cutoff)
-            & (pd.to_datetime(metrics["last_date"]) >= formation - pd.Timedelta(days=MAX_NAV_STALENESS_DAYS))
-        ].copy()
-        metrics["forward_return"] = metrics["scheme_code"].map(forward_returns)
-        metrics = metrics.dropna(subset=["forward_return"])
-        if metrics.empty:
+        ranked["forward_return"] = ranked["scheme_code"].map(forward_returns)
+        ranked = ranked.dropna(subset=["forward_return"])
+        if ranked.empty:
             continue
 
-        ranked = build_rankings(metrics.merge(meta, on="scheme_code", how="left"))
         for group_name, group in ranked.groupby("ranking_group", dropna=False):
             for profile in PROFILE_WEIGHTS:
                 composite_col = f"composite_{profile.lower()}"
