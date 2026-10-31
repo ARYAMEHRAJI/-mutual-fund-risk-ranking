@@ -4,6 +4,7 @@ from .cleaning import correct_scale_anomalies, validate_nav
 from .data import TigzigClient
 from .metrics import calculate_fund_metrics
 from .scoring import build_rankings
+from .evaluation import evaluate_rankings
 
 def run_pipeline(output_dir="data/processed", refresh=True):
     output = Path(output_dir)
@@ -12,7 +13,7 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     metadata = client.latest_funds()
     eligible = client.eligible_funds(metadata)
     if eligible.empty:
-        raise RuntimeError("No funds matched the configured eligibility filters.")
+        raise RuntimeError("No funds matched the configured eligibility and freshness filters.")
     if refresh:
         nav = client.nav_for_schemes(eligible["scheme_code"].tolist())
         nav.to_parquet(output / "nav_raw.parquet", index=False)
@@ -32,4 +33,6 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     ranked = build_rankings(enriched)
     ranked.to_csv(output / "fund_rankings.csv", index=False)
     ranked.to_parquet(output / "fund_rankings.parquet", index=False)
+    evaluation = evaluate_rankings(ranked)
+    evaluation.to_csv(output / "ranking_evaluation.csv", index=False)
     return ranked
