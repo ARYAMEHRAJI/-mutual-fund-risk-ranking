@@ -3,11 +3,16 @@ import numpy as np
 import pandas as pd
 from .config import METRIC_HIGHER_IS_BETTER, PROFILE_WEIGHTS
 
-def assign_ranking_group(data):
+MIN_PEER_GROUP_SIZE = 5
+
+def assign_ranking_group(data, min_peer_size=MIN_PEER_GROUP_SIZE):
+    """Use a subcategory only when it has enough peers; otherwise use its parent group."""
     sub = data.get("category_sub", pd.Series(index=data.index, dtype="object")).astype("string").str.strip()
-    invalid = sub.isna() | sub.eq("") | sub.str.casefold().isin({"nan", "none", "unknown"})
     fallback = data.get("category_group_clean", pd.Series("Unclassified", index=data.index)).astype("string")
-    return sub.mask(invalid, fallback).fillna("Unclassified").astype(str)
+    invalid = sub.isna() | sub.eq("") | sub.str.casefold().isin({"nan", "none", "unknown"})
+    counts = sub[~invalid].value_counts()
+    enough_peers = sub.map(counts).fillna(0).ge(min_peer_size)
+    return sub.where((~invalid) & enough_peers, fallback).fillna("Unclassified").astype(str)
 
 def add_percentile_scores(data, group_col="ranking_group"):
     result = data.copy()
