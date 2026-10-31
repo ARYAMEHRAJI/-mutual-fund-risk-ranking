@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 DATA = ROOT / "data" / "processed" / "fund_rankings.parquet"
 EVALUATION = ROOT / "data" / "processed" / "ranking_evaluation.csv"
+SENSITIVITY = ROOT / "data" / "processed" / "weight_sensitivity.csv"
 
 st.set_page_config(page_title="Mutual Fund Risk & Return Ranking", layout="wide")
 st.title("Mutual Fund Risk & Return Ranking")
@@ -68,5 +69,14 @@ if EVALUATION.exists():
     evaluation = pd.read_csv(EVALUATION)
     evaluation = evaluation[evaluation["profile"].str.lower() == profile]
     st.dataframe(evaluation, use_container_width=True, hide_index=True)
+
+if SENSITIVITY.exists():
+    st.subheader("حساسیت رتبه به تغییر وزن معیارها")
+    sensitivity = pd.read_csv(SENSITIVITY)
+    sensitivity = sensitivity[sensitivity["profile"].str.lower() == profile]
+    if not sensitivity.empty:
+        st.caption("انحراف معیار رتبه در شبیه‌سازی تغییر وزن‌ها؛ مقدار بالاتر یعنی رتبه حساس‌تر است.")
+        unstable = sensitivity.sort_values("rank_std", ascending=False).head(15)
+        st.dataframe(unstable, use_container_width=True, hide_index=True)
 
 st.caption("این رتبه‌بندی ابزار پژوهشی است و توصیه سرمایه‌گذاری محسوب نمی‌شود.")
