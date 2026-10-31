@@ -9,20 +9,15 @@ def evaluate_rankings(ranked, top_n=10):
     """Compare profile rankings with a trailing 12-month-return baseline."""
     rows = []
     for group_name, group in ranked.groupby("ranking_group", dropna=False):
-        group_size = len(group)
         for profile in PROFILE_WEIGHTS:
-            key = profile.lower()
-            composite_col = f"composite_{key}"
+            composite_col = f"composite_{profile.lower()}"
             valid = group.dropna(subset=[composite_col, "return_12m"])
-            if group_size < MIN_PEER_GROUP_SIZE or len(valid) < MIN_PEER_GROUP_SIZE:
+            if len(group) < MIN_PEER_GROUP_SIZE or len(valid) < MIN_PEER_GROUP_SIZE:
                 rows.append({
-                    "ranking_group": group_name,
-                    "profile": profile,
+                    "ranking_group": group_name, "profile": profile,
                     "funds_with_valid_scores": int(len(valid)),
-                    "spearman_vs_12m_return": np.nan,
-                    "top_n": top_n,
-                    "top_n_overlap_count": np.nan,
-                    "top_n_overlap_ratio": np.nan,
+                    "spearman_vs_12m_return": np.nan, "top_n": top_n,
+                    "top_n_overlap_count": np.nan, "top_n_overlap_ratio": np.nan,
                     "evaluation_status": "insufficient_peers",
                 })
                 continue
@@ -30,8 +25,7 @@ def evaluate_rankings(ranked, top_n=10):
             top = valid.nlargest(top_n, composite_col)
             overlap = len(set(top["scheme_code"]) & set(baseline["scheme_code"]))
             rows.append({
-                "ranking_group": group_name,
-                "profile": profile,
+                "ranking_group": group_name, "profile": profile,
                 "funds_with_valid_scores": int(len(valid)),
                 "spearman_vs_12m_return": valid[composite_col].corr(
                     valid["return_12m"], method="spearman"
@@ -55,7 +49,6 @@ def weight_sensitivity(
     weights = PROFILE_WEIGHTS[profile]
     rng = np.random.default_rng(random_state)
     results = []
-
     for group_name, group in ranked.groupby("ranking_group", dropna=False):
         if len(group) < MIN_PEER_GROUP_SIZE:
             continue
@@ -87,18 +80,13 @@ def weight_sensitivity(
 
 
 def evaluate_out_of_sample(
-    nav,
-    metadata,
-    as_of_date=None,
-    horizon_months=12,
-    windows=3,
-    min_history_years=MIN_HISTORY_YEARS,
-    top_n=10,
+    nav, metadata, as_of_date=None, horizon_months=12, windows=3,
+    min_history_years=MIN_HISTORY_YEARS, top_n=10,
 ):
-    """Evaluate historical profile rankings against returns earned after formation.
+    """Evaluate formation-date rankings against returns earned after formation.
 
-    Uses rolling annual formation dates. The current metadata universe is reused,
-    so results have a survivorship/taxonomy look-ahead limitation.
+    Uses rolling annual formation dates. Current metadata is reused, so the
+    result has survivorship and taxonomy look-ahead limitations.
     """
     from .metrics import calculate_fund_metrics
     from .scoring import build_rankings
@@ -136,8 +124,7 @@ def evaluate_out_of_sample(
             through_end = group.loc[group["date"] <= evaluation_date]
             if before.empty or through_end.empty:
                 continue
-            base_row = before.iloc[-1]
-            end_row = through_end.iloc[-1]
+            base_row, end_row = before.iloc[-1], through_end.iloc[-1]
             if (
                 (formation - base_row["date"]).days > MAX_NAV_STALENESS_DAYS
                 or (evaluation_date - end_row["date"]).days > MAX_NAV_STALENESS_DAYS
@@ -163,8 +150,7 @@ def evaluate_out_of_sample(
         if metrics.empty:
             continue
 
-        enriched = metrics.merge(meta, on="scheme_code", how="left")
-        ranked = build_rankings(enriched)
+        ranked = build_rankings(metrics.merge(meta, on="scheme_code", how="left"))
         for group_name, group in ranked.groupby("ranking_group", dropna=False):
             for profile in PROFILE_WEIGHTS:
                 composite_col = f"composite_{profile.lower()}"
@@ -174,13 +160,10 @@ def evaluate_out_of_sample(
                         "formation_date": formation.date().isoformat(),
                         "evaluation_date": evaluation_date.date().isoformat(),
                         "horizon_months": horizon_months,
-                        "ranking_group": group_name,
-                        "profile": profile,
+                        "ranking_group": group_name, "profile": profile,
                         "funds_evaluated": int(len(valid)),
-                        "spearman_vs_forward_return": np.nan,
-                        "top_n": top_n,
-                        "top_n_overlap_count": np.nan,
-                        "top_n_overlap_ratio": np.nan,
+                        "spearman_vs_forward_return": np.nan, "top_n": top_n,
+                        "top_n_overlap_count": np.nan, "top_n_overlap_ratio": np.nan,
                         "evaluation_status": "insufficient_peers",
                     })
                     continue
@@ -191,8 +174,7 @@ def evaluate_out_of_sample(
                     "formation_date": formation.date().isoformat(),
                     "evaluation_date": evaluation_date.date().isoformat(),
                     "horizon_months": horizon_months,
-                    "ranking_group": group_name,
-                    "profile": profile,
+                    "ranking_group": group_name, "profile": profile,
                     "funds_evaluated": int(len(valid)),
                     "spearman_vs_forward_return": valid[composite_col].corr(
                         valid["forward_return"], method="spearman"
@@ -202,5 +184,4 @@ def evaluate_out_of_sample(
                     "top_n_overlap_ratio": overlap / len(baseline) if len(baseline) else np.nan,
                     "evaluation_status": "evaluated",
                 })
-
     return pd.DataFrame(rows)
