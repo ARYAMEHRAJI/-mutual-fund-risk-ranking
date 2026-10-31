@@ -31,16 +31,20 @@ def evaluate_rankings(ranked, top_n=10):
                     "evaluation_status": "insufficient_peers",
                 })
                 continue
-            baseline = valid.nlargest(top_n, "return_12m")
-            top = valid.nlargest(top_n, composite_col)
-            overlap = len(set(top["scheme_code"]) & set(baseline["scheme_code"]))
+            overlap_count = np.nan
+            overlap_ratio = np.nan
+            if len(valid) > top_n:
+                baseline = valid.nlargest(top_n, "return_12m")
+                top = valid.nlargest(top_n, composite_col)
+                overlap_count = len(set(top["scheme_code"]) & set(baseline["scheme_code"]))
+                overlap_ratio = overlap_count / len(baseline) if len(baseline) else np.nan
             rows.append({
                 "ranking_group": group_name, "profile": profile,
                 "funds_with_valid_scores": int(len(valid)),
                 "spearman_vs_12m_return": _spearman_corr(valid[composite_col], valid["return_12m"]),
-                "top_n": min(top_n, len(baseline)),
-                "top_n_overlap_count": overlap,
-                "top_n_overlap_ratio": overlap / len(baseline) if len(baseline) else np.nan,
+                "top_n": min(top_n, len(valid)),
+                "top_n_overlap_count": overlap_count,
+                "top_n_overlap_ratio": overlap_ratio,
                 "evaluation_status": "evaluated",
             })
     return pd.DataFrame(rows)
@@ -175,9 +179,13 @@ def evaluate_out_of_sample(
                         "evaluation_status": "insufficient_peers",
                     })
                     continue
-                baseline = valid.nlargest(top_n, "forward_return")
-                model_top = valid.nlargest(top_n, composite_col)
-                overlap = len(set(model_top["scheme_code"]) & set(baseline["scheme_code"]))
+                overlap_count = np.nan
+                overlap_ratio = np.nan
+                if len(valid) > top_n:
+                    baseline = valid.nlargest(top_n, "forward_return")
+                    model_top = valid.nlargest(top_n, composite_col)
+                    overlap_count = len(set(model_top["scheme_code"]) & set(baseline["scheme_code"]))
+                    overlap_ratio = overlap_count / len(baseline) if len(baseline) else np.nan
                 rows.append({
                     "formation_date": formation.date().isoformat(),
                     "evaluation_date": evaluation_date.date().isoformat(),
@@ -185,9 +193,9 @@ def evaluate_out_of_sample(
                     "ranking_group": group_name, "profile": profile,
                     "funds_evaluated": int(len(valid)),
                     "spearman_vs_forward_return": _spearman_corr(valid[composite_col], valid["forward_return"]),
-                    "top_n": min(top_n, len(baseline)),
-                    "top_n_overlap_count": overlap,
-                    "top_n_overlap_ratio": overlap / len(baseline) if len(baseline) else np.nan,
+                    "top_n": min(top_n, len(valid)),
+                    "top_n_overlap_count": overlap_count,
+                    "top_n_overlap_ratio": overlap_ratio,
                     "evaluation_status": "evaluated",
                 })
     return pd.DataFrame(rows)
