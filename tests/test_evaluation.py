@@ -57,3 +57,14 @@ def test_out_of_sample_evaluation_uses_forward_returns():
     assert result["evaluation_status"].eq("evaluated").all()
     assert (result["funds_evaluated"] == 5).all()
     assert (result["top_n_overlap_ratio"] == 1).all()
+
+
+
+def test_top_n_overlap_is_not_reported_when_top_n_includes_every_fund():
+    ranked = sample_ranked()
+    for profile in ["conservative", "moderate", "growth", "aggressive"]:
+        ranked[f"composite_{profile}"] = ranked["return_12m"] * 100
+    result = evaluate_rankings(ranked, top_n=6)
+    assert result["evaluation_status"].eq("evaluated").all()
+    assert result["top_n_overlap_ratio"].isna().all()
+    assert result["top_n_overlap_count"].isna().all()
