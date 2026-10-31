@@ -1,8 +1,12 @@
 """Central configuration for the ranking model."""
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 TRADING_DAYS = int(os.getenv("TRADING_DAYS", "252"))
 RISK_FREE_RATE = float(os.getenv("RISK_FREE_RATE", "0.0"))
 MIN_HISTORY_YEARS = int(os.getenv("MIN_HISTORY_YEARS", "3"))
+MAX_NAV_STALENESS_DAYS = int(os.getenv("MAX_NAV_STALENESS_DAYS", "7"))
 API_BASE_URL = os.getenv("TIGZIG_BASE_URL", "https://api.tigzig.com/mf/v1")
 API_TIMEOUT = int(os.getenv("TIGZIG_TIMEOUT", "60"))
 API_BATCH_SIZE = min(50, max(1, int(os.getenv("TIGZIG_BATCH_SIZE", "50"))))
