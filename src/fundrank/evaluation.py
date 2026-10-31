@@ -5,6 +5,16 @@ from .config import MAX_NAV_STALENESS_DAYS, MIN_HISTORY_YEARS, PROFILE_WEIGHTS
 from .scoring import MIN_PEER_GROUP_SIZE
 
 
+def _spearman_corr(left, right):
+    """Compute Spearman correlation without requiring SciPy."""
+    pair = pd.concat([left, right], axis=1).dropna()
+    if len(pair) < 2:
+        return np.nan
+    left_ranks = pair.iloc[:, 0].rank(method="average")
+    right_ranks = pair.iloc[:, 1].rank(method="average")
+    return left_ranks.corr(right_ranks, method="pearson")
+
+
 def evaluate_rankings(ranked, top_n=10):
     """Compare profile rankings with a trailing 12-month-return baseline."""
     rows = []
@@ -27,9 +37,7 @@ def evaluate_rankings(ranked, top_n=10):
             rows.append({
                 "ranking_group": group_name, "profile": profile,
                 "funds_with_valid_scores": int(len(valid)),
-                "spearman_vs_12m_return": valid[composite_col].corr(
-                    valid["return_12m"], method="spearman"
-                ),
+                "spearman_vs_12m_return": _spearman_corr(valid[composite_col], valid["return_12m"]),
                 "top_n": min(top_n, len(baseline)),
                 "top_n_overlap_count": overlap,
                 "top_n_overlap_ratio": overlap / len(baseline) if len(baseline) else np.nan,
@@ -176,9 +184,7 @@ def evaluate_out_of_sample(
                     "horizon_months": horizon_months,
                     "ranking_group": group_name, "profile": profile,
                     "funds_evaluated": int(len(valid)),
-                    "spearman_vs_forward_return": valid[composite_col].corr(
-                        valid["forward_return"], method="spearman"
-                    ),
+                    "spearman_vs_forward_return": _spearman_corr(valid[composite_col], valid["forward_return"]),
                     "top_n": min(top_n, len(baseline)),
                     "top_n_overlap_count": overlap,
                     "top_n_overlap_ratio": overlap / len(baseline) if len(baseline) else np.nan,
