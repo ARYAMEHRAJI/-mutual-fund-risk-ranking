@@ -26,7 +26,9 @@ The four profile weights are carried forward from the research notebook and each
 
 ## Evaluation
 The in-sample diagnostic compares composite scores with trailing 12-month returns. Since trailing 12-month return is itself a model input, this is a consistency diagnostic and not independent predictive validation.
-The pipeline also performs rolling out-of-sample tests. At each historical formation date, metrics and rankings are calculated using only NAV observations available on or before that date; the resulting ranking is compared with the return earned over the following 12 months. The current eligible-fund metadata is reused for historical windows, so this first implementation has survivorship and possible taxonomy look-ahead bias. It is a stronger test than the in-sample comparison, but not a fully point-in-time backtest.
+The pipeline also performs rolling out-of-sample tests. At each historical formation date, raw NAV observations are first truncated at that date and anomaly detection/cleaning is rerun on that truncated history only. Metrics, peer scores, and composite rankings therefore cannot use future NAV observations or future anomaly evidence. Forward-period NAV is cleaned separately through the evaluation date solely to measure the outcome; it is never passed into formation-date feature calculation. The formation NAV used as the investment starting value comes from the formation-time cleaned history.
+
+The historical universe and classifications still use the latest available eligible-fund metadata. Consequently, funds that have since closed or disappeared may be absent from historical windows, and current categories may differ from historical categories. This leaves survivorship and taxonomy look-ahead bias. The evaluation is now point-in-time with respect to NAV-derived features and cleaning, but it is not a fully point-in-time universe/backtest.
 
 ## Questionnaire
 The ten answers are each between 0 and 10. The weighted score is normalised as 100 * sum(answer_i * weight_i) / (10 * sum(weights)). This corrects the notebook's interim division-by-two normalisation.
@@ -37,3 +39,7 @@ Percentiles depend on the selected universe; broad subcategories can still conta
 
 ### Top-N overlap interpretation
 Top-N overlap is reported only when the peer group contains more funds than the requested N. If N would include every eligible fund in a group, overlap is left missing rather than reported as 100%; such a result would be mechanically guaranteed and would overstate selection quality. Spearman correlation can still be reported for groups meeting the minimum peer-size requirement.
+
+## Historical metadata snapshots
+To remove the remaining universe and taxonomy look-ahead, each scheduled data refresh should preserve a dated copy of the complete scheme metadata before applying the active-fund filters. Historical evaluations should select schemes and classifications from the latest snapshot available on or before each formation date. Until enough dated snapshots exist (or a reliable historical scheme master is sourced), results must be labelled as subject to survivorship and taxonomy bias.
+\n
