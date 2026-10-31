@@ -24,7 +24,7 @@ def correct_scale_anomalies(nav, jump_threshold=0.50, persistence_tolerance=0.05
     data = nav.copy().sort_values(["scheme_code", "date"]).reset_index(drop=True)
     data["nav_clean"] = data["nav"].astype(float)
     audit = []
-    factors = np.array([10.0, 100.0, 1000.0])
+    factors = np.array([0.001, 0.01, 0.1, 10.0, 100.0, 1000.0])
     for code, group in data.groupby("scheme_code", sort=False):
         idx = group.index.to_list()
         vals = data.loc[idx, "nav_clean"].to_numpy(dtype=float)
