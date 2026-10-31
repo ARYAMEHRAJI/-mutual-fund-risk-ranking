@@ -2,7 +2,9 @@
 import numpy as np
 import pandas as pd
 
-def validate_nav(nav):
+
+def validate_nav(nav, as_of_date=None):
+    """Validate NAV rows and exclude observations dated after the India-local as-of date."""
     required = {"scheme_code", "date", "nav"}
     missing = required.difference(nav.columns)
     if missing:
@@ -12,9 +14,14 @@ def validate_nav(nav):
     data["date"] = pd.to_datetime(data["date"], errors="coerce")
     data["nav"] = pd.to_numeric(data["nav"], errors="coerce")
     data = data.dropna(subset=["scheme_code", "date", "nav"])
+    if as_of_date is None:
+        as_of_date = pd.Timestamp.now(tz="Asia/Kolkata").normalize().tz_localize(None)
+    as_of_date = pd.Timestamp(as_of_date).normalize().tz_localize(None) if pd.Timestamp(as_of_date).tzinfo else pd.Timestamp(as_of_date).normalize()
+    data = data.loc[data["date"] <= as_of_date].copy()
     data = data.loc[data["nav"] > 0].copy()
     data["scheme_code"] = data["scheme_code"].astype("int64")
     return data.sort_values(["scheme_code", "date"]).drop_duplicates(["scheme_code", "date"], keep="last").reset_index(drop=True)
+
 
 def correct_scale_anomalies(nav, jump_threshold=0.50, persistence_tolerance=0.05):
     """Correct clear persistent powers-of-ten shifts or isolated one-day spikes.
