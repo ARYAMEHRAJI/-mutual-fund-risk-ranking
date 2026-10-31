@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 DATA = ROOT / "data" / "processed" / "fund_rankings.parquet"
 EVALUATION = ROOT / "data" / "processed" / "ranking_evaluation.csv"
+OUT_OF_SAMPLE = ROOT / "data" / "processed" / "out_of_sample_evaluation.csv"
 SENSITIVITY = ROOT / "data" / "processed" / "weight_sensitivity.csv"
 
 st.set_page_config(page_title="Mutual Fund Risk & Return Ranking", layout="wide")
@@ -27,10 +28,18 @@ label = st.selectbox("پروفایل ریسک", list(profiles))
 profile = profiles[label]
 score, rank, coverage = f"composite_{profile}", f"rank_{profile}", f"coverage_{profile}"
 
-a, b, c = st.columns(3)
+a, b, c, d = st.columns(4)
 a.metric("تعداد صندوق‌ها", f"{len(df):,}")
 b.metric("آخرین تاریخ NAV", str(pd.to_datetime(df["last_date"]).max().date()))
 c.metric("گروه‌های رتبه‌بندی", f"{df['ranking_group'].nunique():,}")
+small_groups = (
+    int(df.loc[df["ranking_group_status"] == "insufficient_peers", "ranking_group"].nunique())
+    if "ranking_group_status" in df.columns else 0
+)
+d.metric("گروه‌های کم‌نمونه", f"{small_groups:,}")
+
+if small_groups:
+    st.info("گروه‌هایی با کمتر از ۵ صندوق در رتبه‌بندی نسبی وارد نشده‌اند؛ معیارهای خام آن‌ها همچنان در داده موجود است.")
 
 left, right = st.columns([1, 2])
 with left:
@@ -50,9 +59,12 @@ view = view.sort_values(score, ascending=False)
 
 with right:
     st.subheader(f"رتبه‌بندی پروفایل {label}")
-    cols = [x for x in [rank, "scheme_name", "scheme_code", "ranking_group", score, coverage,
-                         "return_1m", "return_3m", "return_6m", "return_12m", "volatility",
-                         "max_drawdown", "sharpe_ratio", "sortino_ratio"] if x in view.columns]
+    cols = [x for x in [
+        rank, "scheme_name", "scheme_code", "ranking_group",
+        "ranking_group_size", "ranking_group_status", score, coverage,
+        "return_1m", "return_3m", "return_6m", "return_12m",
+        "volatility", "max_drawdown", "sharpe_ratio", "sortino_ratio",
+    ] if x in view.columns]
     st.dataframe(view[cols], use_container_width=True, hide_index=True)
 
 if not view.empty:
@@ -65,10 +77,18 @@ else:
     st.info("با فیلترهای انتخاب‌شده صندوقی پیدا نشد.")
 
 if EVALUATION.exists():
-    st.subheader("ارزیابی رتبه‌بندی در مقایسه با بازده ۱۲ماهه")
+    st.subheader("ارزیابی درون‌نمونه‌ای در مقایسه با بازده گذشته")
     evaluation = pd.read_csv(EVALUATION)
     evaluation = evaluation[evaluation["profile"].str.lower() == profile]
+    st.caption("این مقایسه تشخیصی است؛ بازده ۱۲ماهه گذشته خودش یکی از ورودی‌های مدل است.")
     st.dataframe(evaluation, use_container_width=True, hide_index=True)
+
+if OUT_OF_SAMPLE.exists():
+    st.subheader("ارزیابی برون‌نمونه‌ای با بازده ۱۲ ماه آینده")
+    oos = pd.read_csv(OUT_OF_SAMPLE)
+    oos = oos[oos["profile"].str.lower() == profile]
+    st.caption("رتبه‌ها با داده‌های قبل از تاریخ تشکیل ساخته شده‌اند و با بازده ۱۲ ماه بعد مقایسه می‌شوند. این نسخه هنوز از فهرست و طبقه‌بندی فعلی صندوق‌ها استفاده می‌کند.")
+    st.dataframe(oos, use_container_width=True, hide_index=True)
 
 if SENSITIVITY.exists():
     st.subheader("حساسیت رتبه به تغییر وزن معیارها")
