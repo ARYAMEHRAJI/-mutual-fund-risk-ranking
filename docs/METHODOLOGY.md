@@ -33,3 +33,7 @@ The ten answers are each between 0 and 10. The weighted score is normalised as 1
 
 ## Limitations
 Percentiles depend on the selected universe; broad subcategories can still contain different strategies. NAV-only data does not capture every fee, tax, liquidity, or manager factor. Historical results do not predict future performance.
+
+
+### Top-N overlap interpretation
+Top-N overlap is reported only when the peer group contains more funds than the requested N. If N would include every eligible fund in a group, overlap is left missing rather than reported as 100%; such a result would be mechanically guaranteed and would overstate selection quality. Spearman correlation can still be reported for groups meeting the minimum peer-size requirement.
