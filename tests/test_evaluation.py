@@ -118,4 +118,4 @@ def test_formation_ranking_is_invariant_to_future_nav_anomalies():
         ranked_before[columns].reset_index(drop=True),
         ranked_after[columns].reset_index(drop=True),
     )
-\n
+
