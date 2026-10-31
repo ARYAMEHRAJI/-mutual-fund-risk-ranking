@@ -1,17 +1,21 @@
 """End-to-end data pipeline."""
 from pathlib import Path
+import pandas as pd
 from .cleaning import correct_scale_anomalies, validate_nav
 from .data import TigzigClient
 from .metrics import calculate_fund_metrics
 from .scoring import build_rankings
 from .evaluation import evaluate_rankings, weight_sensitivity
 
+
 def run_pipeline(output_dir="data/processed", refresh=True):
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
+    # Use one consistent India-local calendar date for metadata and NAV validation.
+    as_of_date = pd.Timestamp.now(tz="Asia/Kolkata").normalize().tz_localize(None)
     client = TigzigClient()
     metadata = client.latest_funds()
-    eligible = client.eligible_funds(metadata)
+    eligible = client.eligible_funds(metadata, as_of_date=as_of_date)
     if eligible.empty:
         raise RuntimeError("No funds matched the configured eligibility and freshness filters.")
     if refresh:
@@ -21,9 +25,13 @@ def run_pipeline(output_dir="data/processed", refresh=True):
         path = output / "nav_raw.parquet"
         if not path.exists():
             raise FileNotFoundError(f"Missing cached NAV file: {path}")
-        import pandas as pd
         nav = pd.read_parquet(path)
-    nav = validate_nav(nav)
+
+    parsed_dates = pd.to_datetime(nav["date"], errors="coerce")
+    future_mask = parsed_dates > as_of_date
+    future_nav = nav.loc[future_mask].copy()
+    future_nav.to_csv(output / "future_nav_excluded.csv", index=False)
+    nav = validate_nav(nav, as_of_date=as_of_date)
     cleaned, audit = correct_scale_anomalies(nav)
     audit.to_csv(output / "cleaning_audit.csv", index=False)
     cleaned.to_parquet(output / "nav_clean.parquet", index=False)
@@ -36,6 +44,6 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     evaluation = evaluate_rankings(ranked)
     evaluation.to_csv(output / "ranking_evaluation.csv", index=False)
     sensitivity = [weight_sensitivity(ranked, profile=name, simulations=100) for name in ["Conservative", "Moderate", "Growth", "Aggressive"]]
-    import pandas as pd
     pd.concat(sensitivity, ignore_index=True).to_csv(output / "weight_sensitivity.csv", index=False)
+    print(f"Excluded future-dated NAV rows: {len(future_nav):,}")
     return ranked
