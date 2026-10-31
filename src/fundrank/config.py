@@ -5,11 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 TRADING_DAYS = int(os.getenv("TRADING_DAYS", "252"))
 RISK_FREE_RATE = float(os.getenv("RISK_FREE_RATE", "0.0"))
-# Risk-adjusted ratios become unstable when their annualised denominator is
-# extremely close to zero. Below this floor, the ratio is treated as unavailable.
-MIN_ANNUALIZED_RISK_DENOMINATOR = float(
-    os.getenv("MIN_ANNUALIZED_RISK_DENOMINATOR", "0.005")
-)
+# Risk-adjusted ratios are unstable when their annualised denominator is near zero.
+MIN_ANNUALIZED_RISK_DENOMINATOR = float(os.getenv("MIN_ANNUALIZED_RISK_DENOMINATOR", "0.005"))
 MIN_HISTORY_YEARS = int(os.getenv("MIN_HISTORY_YEARS", "3"))
 MAX_NAV_STALENESS_DAYS = int(os.getenv("MAX_NAV_STALENESS_DAYS", "7"))
 API_BASE_URL = os.getenv("TIGZIG_BASE_URL", "https://api.tigzig.com/mf/v1")
