@@ -25,7 +25,6 @@ def add_percentile_scores(data, group_col="ranking_group", min_peer_size=MIN_PEE
     result["ranking_group_status"] = np.where(
         group_sizes >= min_peer_size, "sufficient_peers", "insufficient_peers"
     )
-
     for metric, higher_better in METRIC_HIGHER_IS_BETTER.items():
         if metric not in result:
             raise ValueError(f"Missing metric column: {metric}")
@@ -38,9 +37,7 @@ def add_percentile_scores(data, group_col="ranking_group", min_peer_size=MIN_PEE
             valid = vals.notna()
             if valid.any():
                 pct = vals.loc[valid].rank(method="average", pct=True, ascending=True)
-                result.loc[pct.index, col] = (
-                    pct * 100 if higher_better else (1 - pct) * 100
-                )
+                result.loc[pct.index, col] = pct * 100 if higher_better else (1 - pct) * 100
     return result
 
 
@@ -57,9 +54,7 @@ def add_composite_rankings(data):
             weighted_sum.loc[valid] += result.loc[valid, col] * weight
             valid_weight.loc[valid] += weight
         result[f"coverage_{profile.lower()}"] = valid_weight
-        result[f"composite_{profile.lower()}"] = weighted_sum.div(
-            valid_weight.where(valid_weight > 0)
-        )
+        result[f"composite_{profile.lower()}"] = weighted_sum.div(valid_weight.where(valid_weight > 0))
         result[f"rank_{profile.lower()}"] = result.groupby("ranking_group")[
             f"composite_{profile.lower()}"
         ].rank(method="min", ascending=False)
@@ -69,6 +64,4 @@ def add_composite_rankings(data):
 def build_rankings(data):
     result = data.copy()
     result["ranking_group"] = assign_ranking_group(result)
-    return add_composite_rankings(
-        add_percentile_scores(result, min_peer_size=MIN_PEER_GROUP_SIZE)
-    )
+    return add_composite_rankings(add_percentile_scores(result))
