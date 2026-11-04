@@ -5,6 +5,7 @@ A research-oriented Python project for analysing Indian mutual-fund NAV historie
 ## Main capabilities
 
 - Download scheme metadata and historical NAV data from the Tigzig API.
+- Archive the complete provider scheme metadata before applying active-fund and eligibility filters, creating a dated point-in-time universe for future evaluations.
 - Filter active Direct Growth open-ended schemes with at least three years of history and recent NAV data.
 - Validate NAV observations and create an auditable anomaly-correction report.
 - Calculate 1, 3, 6, and 12-month returns, annualised volatility, maximum drawdown, Sharpe, and Sortino.
@@ -37,6 +38,7 @@ The first data refresh can take several minutes. The default request delay is 21
 app/                    Streamlit dashboard
 data/raw/               Raw input cache (not committed)
 data/processed/         Cleaned NAV and ranking outputs (not committed)
+metadata_snapshots/     Dated full scheme metadata snapshots
 docs/                   Methodology, data dictionary, migration notes
 notebooks/              Research notebook archive
 scripts/                Pipeline entry points
@@ -44,6 +46,10 @@ src/fundrank/           Reusable ingestion, cleaning, metrics and ranking code
 tests/                  Unit tests
 .github/workflows/      Tests and scheduled refresh
 ```
+
+## Metadata snapshots and evaluation limits
+
+Each successful pipeline run saves the complete metadata response to `metadata_snapshots/YYYY-MM-DD.json` before eligibility filters are applied. The scheduled GitHub Actions workflow commits this snapshot to the repository. This starts a historical record from the first successful run after this feature is merged; it does not recreate missing historical metadata from earlier years. Future out-of-sample evaluations can use these snapshots to reduce survivorship and category/taxonomy look-ahead bias.
 
 ## Data source
 
@@ -59,7 +65,7 @@ The API republishes Indian mutual-fund NAV data sourced from AMFI. Review the pr
 - NAV corrections are logged; ambiguous anomalies are not silently changed.
 - Subcategory peer groups are used only when they contain at least five funds; parent groups smaller than five are not ranked.
 - The default Sharpe risk-free rate is zero to match the final notebook reconstruction and is configurable.
-- Out-of-sample evaluation uses only historical NAVs available at each formation date and measures the following 12-month return. It currently reuses today's eligible universe and metadata, so survivorship and taxonomy look-ahead bias remain.
+- Out-of-sample evaluation uses only historical NAVs available at each formation date and measures the following 12-month return. Until dated metadata snapshots are used to reconstruct the historical eligible universe, older evaluations still contain survivorship and taxonomy look-ahead bias.
 - Rankings are relative to the selected universe and are not forecasts.
 
 ## Disclaimer

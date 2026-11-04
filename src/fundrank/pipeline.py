@@ -1,5 +1,6 @@
 """End-to-end data pipeline."""
 from pathlib import Path
+import json
 import pandas as pd
 from .cleaning import correct_scale_anomalies, validate_nav
 from .data import TigzigClient
@@ -14,6 +15,24 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     as_of_date = pd.Timestamp.now(tz="Asia/Kolkata").normalize().tz_localize(None)
     client = TigzigClient()
     metadata = client.latest_funds()
+
+    # Preserve the complete provider metadata before applying today's active-
+    # fund, plan, option, history, and freshness filters. These dated snapshots
+    # build a point-in-time universe for future evaluations; they cannot
+    # reconstruct historical metadata from before snapshot collection began.
+    snapshot_dir = Path("metadata_snapshots")
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_path = snapshot_dir / f"{as_of_date:%Y-%m-%d}.json"
+    snapshot = {
+        "as_of_date": as_of_date.strftime("%Y-%m-%d"),
+        "captured_at_utc": pd.Timestamp.now(tz="UTC").isoformat(),
+        "source": "Tigzig latest mutual-fund metadata",
+        "row_count": int(len(metadata)),
+        "records": json.loads(metadata.to_json(orient="records", date_format="iso", force_ascii=False)),
+    }
+    snapshot_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"Saved full scheme metadata snapshot: {snapshot_path} ({len(metadata):,} rows)")
+
     eligible = client.eligible_funds(metadata, as_of_date=as_of_date)
     if eligible.empty:
         raise RuntimeError("No funds matched the configured eligibility and freshness filters.")
