@@ -27,7 +27,8 @@
     <button class="tab" data-tab="compare">مقایسه صندوق‌ها</button>
     <button class="tab" data-tab="simulation">محاسبه رشد سرمایه</button>
     <button class="tab" data-tab="risk">سنجش ریسک‌پذیری</button>
-    <button class="tab" data-tab="more">اطلاعات تکمیلی</button>
+    <button class="tab" data-tab="expert">تحلیل تخصصی</button>
+    <button class="tab" data-tab="more">راهنما و روش‌شناسی</button>
   </nav>
 
   <section id="ranking" class="panel active">
@@ -69,6 +70,15 @@
     <div class="section-head"><div><h2>چه میزان ریسک برای من مناسب است؟</h2><p>به چند سؤال کوتاه پاسخ دهید تا یک پروفایل تقریبی دریافت کنید.</p></div></div>
     <div id="questions" class="questions"></div><button id="calculate-risk">نمایش نتیجه من</button><div id="risk-result" class="result-card hidden"></div>
     <p class="disclaimer">این پرسش‌نامه آموزشی و تقریبی است و توصیه مالی شخصی محسوب نمی‌شود.</p>
+  </section>
+
+
+  <section id="expert" class="panel">
+    <div class="section-head"><div><h2>نمای تخصصی صندوق‌ها</h2><p>برای تحلیل‌گران؛ معیارهای بازده، ریسک و عملکرد نسبت به شاخص مرجع.</p></div><span class="rank-pill">نمای حرفه‌ای</span></div>
+    <div class="intro-note">این بخش شامل داده‌های خام و معیارهای تخصصی است. برای استفاده عمومی، از بخش «پیدا کردن صندوق» شروع کنید.</div>
+    <div class="filters"><label>پروفایل رتبه‌بندی<select id="expert-profile"><option value="conservative">کم‌ریسک</option><option value="moderate" selected>متعادل</option><option value="growth">رشدگرا</option><option value="aggressive">ریسک‌پذیر</option></select></label><label>گروه صندوق<select id="expert-group"><option value="">همه گروه‌ها</option></select></label><label class="search-label">جست‌وجوی صندوق<input id="expert-search" type="search" placeholder="نام یا کد صندوق…"></label></div>
+    <div class="table-wrap expert-table-wrap"><table><thead><tr><th>رتبه</th><th>نام صندوق</th><th>گروه</th><th>بازده یک‌ساله</th><th>بازده کل دوره</th><th>نوسان سالانه</th><th>حداکثر افت</th><th>آلفا</th><th>بتا</th><th>شارپ</th><th>سورتینو</th><th>بازده به ریسک</th><th>بهترین روز</th><th>بدترین روز</th><th>شاخص مرجع</th></tr></thead><tbody id="expert-body"></tbody></table></div>
+    <p class="muted">مقادیر خالی به معنی نبود داده معتبر یا کافی است؛ صفر فرض نشده‌اند.</p>
   </section>
 
   <section id="more" class="panel">
