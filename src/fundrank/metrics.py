@@ -44,7 +44,6 @@ def calculate_fund_metrics(nav, risk_free_rate=RISK_FREE_RATE,
             "last_date": group["date"].iloc[-1],
             "observations": int(len(group)),
             "total_return": latest / float(values.iloc[0]) - 1,
-            "period_end_return": latest / float(values.iloc[0]) - 1,
             "best_daily_return": float(daily.max()) if len(daily) else np.nan,
             "worst_daily_return": float(daily.min()) if len(daily) else np.nan,
             "annualized_return_to_volatility": (

@@ -5,7 +5,6 @@ import pandas as pd
 from .cleaning import correct_scale_anomalies, validate_nav
 from .data import TigzigClient
 from .metrics import calculate_fund_metrics
-from .benchmark import add_benchmark_metrics, daily_fund_returns
 from .scoring import build_rankings
 from .evaluation import evaluate_rankings, evaluate_out_of_sample, weight_sensitivity
 
@@ -52,7 +51,6 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     cleaned.to_parquet(output / "nav_clean.parquet", index=False)
 
     metrics = calculate_fund_metrics(cleaned)
-    metrics = add_benchmark_metrics(metrics, eligible, nav_returns=daily_fund_returns(cleaned))
     meta_cols = [col for col in [
         "scheme_code", "category_group_clean", "category_sub", "amc",
         "scheme_plan", "scheme_option",

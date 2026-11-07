@@ -8,7 +8,7 @@ A research-oriented Python project for analysing Indian mutual-fund NAV historie
 - Archive the complete provider scheme metadata before applying active-fund and eligibility filters, creating a dated point-in-time universe for future evaluations.
 - Filter active Direct Growth open-ended schemes with at least three years of history and recent NAV data.
 - Validate NAV observations and create an auditable anomaly-correction report.
-- Calculate 1, 3, 6, and 12-month returns, annualised volatility, maximum drawdown, Sharpe, and Sortino.
+- Calculate 1, 3, 6, and 12-month returns, cumulative total return, best and worst daily returns, annualised return-to-risk, volatility, maximum drawdown, Sharpe, and Sortino.
 - Suppress risk-adjusted ratios when their annualised denominator is below a configurable stability floor.
 - Convert metrics into peer-group percentile scores; groups with fewer than five funds are retained but not assigned relative ranks.
 - Rank funds for Conservative, Moderate, Growth, and Aggressive profiles using the project's agreed weights.
@@ -64,7 +64,8 @@ The API republishes Indian mutual-fund NAV data sourced from AMFI. Review the pr
 - The Sortino denominator uses target-zero downside RMS, not the standard deviation of clipped returns.
 - NAV corrections are logged; ambiguous anomalies are not silently changed.
 - Subcategory peer groups are used only when they contain at least five funds; parent groups smaller than five are not ranked.
-- The default Sharpe risk-free rate is zero to match the final notebook reconstruction and is configurable.
+- The default Sharpe and Sortino risk-free rate is zero to match the final notebook reconstruction and is configurable.
+- Alpha and beta are not included because the project does not yet have reliable, aligned daily total-return benchmark history for every fund strategy; they are omitted rather than shown as empty or estimated against unsuitable indices.
 - Out-of-sample evaluation uses only historical NAVs available at each formation date and measures the following 12-month return. Until dated metadata snapshots are used to reconstruct the historical eligible universe, older evaluations still contain survivorship and taxonomy look-ahead bias.
 - Rankings are relative to the selected universe and are not forecasts.
 
