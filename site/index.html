@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101827">
-  <title>داشبورد رتبه‌بندی صندوق‌های سرمایه‌گذاری</title>
+  <meta name="theme-color" content="#12305a">
+  <title>صندوق‌نگر | راهنمای ساده شناخت صندوق‌ها</title>
   <link rel="stylesheet" href="./styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
@@ -12,84 +12,85 @@
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><div class="brand-mark">MF</div><div><strong>صندوق‌نگر</strong><small>سامانه تحلیل ریسک و بازده صندوق‌ها</small></div></div>
-  <div class="top-meta"><span id="data-date">در حال دریافت داده‌ها…</span><span class="live-dot">● داده پژوهشی</span></div>
+  <a class="brand" href="#" aria-label="صفحه اصلی صندوق‌نگر"><div class="brand-mark">ص</div><div><strong>صندوق‌نگر</strong><small>راهنمای ساده شناخت صندوق‌های سرمایه‌گذاری</small></div></a>
+  <div class="top-meta"><span id="data-date">در حال دریافت اطلاعات…</span><span class="live-dot">● داده‌های پژوهشی</span></div>
 </header>
 <main class="container">
   <section class="hero">
-    <div><p class="eyebrow">MUTUAL FUND RESEARCH DASHBOARD</p><h1>تحلیل و رتبه‌بندی صندوق‌های سرمایه‌گذاری</h1><p>مقایسه بازده و ریسک، همراه با آلفا و بتا نسبت به شاخص مرجع متناسب با استراتژی صندوق</p></div>
+    <div><p class="eyebrow">راهنمای انتخاب و مقایسه صندوق‌ها</p><h1>صندوق مناسب‌تان را ساده‌تر بشناسید</h1><p>بازده، ریسک و رتبه صندوق‌ها را کنار هم ببینید؛ بدون نیاز به دانش تخصصی مالی.</p></div>
     <div class="hero-stat"><span>تعداد صندوق‌های بررسی‌شده</span><strong id="fund-count">—</strong></div>
   </section>
+  <div class="intro-note"><strong>از کجا شروع کنم؟</strong> ابتدا میزان ریسک‌پذیری را انتخاب کنید، سپس صندوق‌ها را بر اساس بازده و میزان افت و نوسان مقایسه کنید. رتبه بالاتر به‌تنهایی به معنی مناسب‌تر بودن برای همه نیست.</div>
   <div id="load-error" class="notice error hidden"></div>
   <nav class="tabs" aria-label="بخش‌های داشبورد">
-    <button class="tab active" data-tab="ranking">رتبه‌بندی</button>
+    <button class="tab active" data-tab="ranking">پیدا کردن صندوق</button>
     <button class="tab" data-tab="compare">مقایسه صندوق‌ها</button>
-    <button class="tab" data-tab="portfolio">سبد مساوی</button>
-    <button class="tab" data-tab="simulation">شبیه‌سازی سرمایه</button>
-    <button class="tab" data-tab="risk">پرسش‌نامه ریسک</button>
-    <button class="tab" data-tab="evaluation">ارزیابی مدل</button>
-    <button class="tab" data-tab="report">گزارش PDF</button>
+    <button class="tab" data-tab="simulation">محاسبه رشد سرمایه</button>
+    <button class="tab" data-tab="risk">سنجش ریسک‌پذیری</button>
+    <button class="tab" data-tab="more">اطلاعات تکمیلی</button>
   </nav>
 
   <section id="ranking" class="panel active">
-    <div class="section-head"><div><h2>رتبه‌بندی صندوق‌ها</h2><p>رتبه‌ها درون گروه مقایسه‌ای محاسبه شده‌اند.</p></div>
-      <select id="profile"><option value="conservative">محافظه‌کار</option><option value="moderate" selected>متعادل</option><option value="growth">رشدگرا</option><option value="aggressive">تهاجمی</option></select>
+    <div class="section-head"><div><h2>صندوق‌ها را پیدا کنید</h2><p>یک پروفایل انتخاب کنید و صندوق‌های هم‌گروه را با هم بسنجید.</p></div>
+      <label class="profile-select">میزان ریسک‌پذیری<select id="profile"><option value="conservative">کم‌ریسک</option><option value="moderate" selected>متعادل</option><option value="growth">رشدگرا</option><option value="aggressive">ریسک‌پذیر</option></select></label>
     </div>
-    <div class="metrics-grid">
-      <article class="metric-card"><span>تعداد نتایج</span><strong id="result-count">—</strong></article>
-      <article class="metric-card"><span>گروه‌های مقایسه</span><strong id="group-count">—</strong></article>
-      <article class="metric-card"><span>میانگین امتیاز ریسک</span><strong id="avg-risk">—</strong></article>
-      <article class="metric-card"><span>آخرین تاریخ NAV</span><strong id="latest-date">—</strong></article>
+    <div class="profile-hint" id="profile-hint">در حالت متعادل، میان بازده و ریسک توازن بیشتری در نظر گرفته می‌شود.</div>
+    <div class="metrics-grid compact">
+      <article class="metric-card"><span>تعداد صندوق‌های منطبق</span><strong id="result-count">—</strong></article>
+      <article class="metric-card"><span>تعداد گروه‌ها</span><strong id="group-count">—</strong></article>
+      <article class="metric-card"><span>میانگین ریسک صندوق‌ها</span><strong id="avg-risk">—</strong></article>
+      <article class="metric-card"><span>آخرین تاریخ اطلاعات</span><strong id="latest-date">—</strong></article>
     </div>
-    <div class="filters">
-      <label>گروه صندوق<select id="group-filter"><option value="">همه گروه‌ها</option></select></label>
-      <label>حداقل پوشش وزن‌ها <span id="coverage-label">70%</span><input id="coverage-filter" type="range" min="0" max="100" value="70"></label>
-      <label class="search-label">جست‌وجوی نام یا کد<input id="search" type="search" placeholder="نام یا کد صندوق…"></label>
+    <div class="filters simple-filters">
+      <label>نوع صندوق<select id="group-filter"><option value="">همه انواع</option></select></label>
+      <label class="search-label">جست‌وجوی صندوق<input id="search" type="search" placeholder="نام صندوق را بنویسید…"></label>
+      <label class="coverage-control">حداقل کامل بودن اطلاعات <span id="coverage-label">۷۰٪</span><input id="coverage-filter" type="range" min="0" max="100" value="70"></label>
     </div>
-    <div class="table-wrap"><table><thead><tr><th>رتبه</th><th>نام صندوق</th><th>کد</th><th>گروه</th><th>امتیاز</th><th>پوشش</th><th>بازده ۱۲ماهه</th><th>نوسان سالانه</th><th>افت بیشینه</th><th>شاخص مرجع</th><th>آلفا</th><th>بتا</th><th>بیشترین روز</th><th>کمترین روز</th><th>بازده به ریسک</th><th>ریسک</th></tr></thead><tbody id="ranking-body"><tr><td colspan="16">در حال بارگذاری…</td></tr></tbody></table></div>
-    <div class="chart-card"><div class="section-head"><h3>نقشه ریسک و بازده</h3><small>هر نقطه نماینده یک صندوق است.</small></div><canvas id="scatter-chart"></canvas></div>
-    <button class="secondary" id="download-csv">دریافت نتایج CSV</button>
+    <div class="result-caption"><strong>نتیجه‌ها</strong><span>برای دیدن جزئیات هر صندوق، روی «اطلاعات بیشتر» بزنید.</span></div>
+    <div id="ranking-list" class="fund-list"><div class="empty-state">در حال بارگذاری اطلاعات صندوق‌ها…</div></div>
+    <div class="advanced-chart"><details><summary>نمای نموداری ریسک و بازده (برای کاربران علاقه‌مند)</summary><p class="muted">هر نقطه یک صندوق است. محور افقی نوسان سالانه و محور عمودی بازده ۱۲ماهه را نشان می‌دهد.</p><div class="chart-card"><canvas id="scatter-chart"></canvas></div></details></div>
+    <button class="secondary" id="download-csv">دریافت فهرست صندوق‌ها (CSV)</button>
   </section>
 
   <section id="compare" class="panel">
-    <div class="section-head"><div><h2>مقایسه مستقیم صندوق‌ها</h2><p>دو تا پنج صندوق را برای مقایسه انتخاب کنید.</p></div></div>
-    <div class="filters"><label class="search-label">انتخاب صندوق‌ها<select id="compare-select" multiple size="6"></select></label></div>
-    <div id="compare-output" class="empty-state">حداقل دو صندوق انتخاب کنید.</div><div class="chart-card"><canvas id="compare-chart"></canvas></div>
-  </section>
-
-  <section id="portfolio" class="panel">
-    <div class="section-head"><div><h2>سبد پیشنهادی با وزن مساوی</h2><p>انتخاب چند صندوق برتر از رتبه‌بندی پروفایل انتخاب‌شده.</p></div></div>
-    <div class="filters"><label>گروه<select id="portfolio-group"><option value="">همه گروه‌ها</option></select></label><label>تعداد صندوق‌ها<select id="portfolio-count"><option>2</option><option>3</option><option>5</option><option>7</option><option>10</option></select></label></div>
-    <div id="portfolio-output"></div>
-    <p class="disclaimer">این ابزار صرفاً یک ترکیب آموزشی از صندوق‌های موجود در رتبه‌بندی است و تنوع بین طبقات دارایی یا تضمین بازده ایجاد نمی‌کند.</p>
+    <div class="section-head"><div><h2>مقایسه دو تا پنج صندوق</h2><p>صندوق‌ها را انتخاب کنید تا تفاوت بازده و ریسک آن‌ها روشن شود.</p></div></div>
+    <label class="wide-label">انتخاب صندوق‌ها<select id="compare-select" multiple size="6"></select></label>
+    <div id="compare-output" class="empty-state">برای شروع، دست‌کم دو صندوق انتخاب کنید.</div><div class="chart-card"><canvas id="compare-chart"></canvas></div>
   </section>
 
   <section id="simulation" class="panel">
-    <div class="section-head"><div><h2>شبیه‌سازی رشد سرمایه در گذشته</h2><p>محاسبه بر اساس تغییر NAV تاریخی صندوق انتخاب‌شده.</p></div></div>
-    <div class="filters"><label class="search-label">صندوق<select id="simulation-fund"></select></label><label>سرمایه اولیه فرضی<input id="capital" type="number" min="1" value="100000"></label><button id="run-simulation">محاسبه</button></div>
+    <div class="section-head"><div><h2>اگر در گذشته سرمایه‌گذاری می‌کردم…</h2><p>ببینید یک مبلغ فرضی بر اساس تغییرات NAV صندوق چه ارزشی پیدا می‌کرد.</p></div></div>
+    <div class="filters"><label class="search-label">انتخاب صندوق<select id="simulation-fund"></select></label><label>مبلغ اولیه فرضی<input id="capital" type="number" min="1" value="100000"></label><button id="run-simulation">محاسبه ارزش سرمایه</button></div>
     <div id="simulation-metrics" class="metrics-grid"></div><div class="chart-card"><canvas id="nav-chart"></canvas></div>
-    <p class="disclaimer">هزینه‌ها، مالیات، جریان واریز/برداشت و محدودیت نقدشوندگی لحاظ نشده‌اند. عملکرد گذشته تضمین‌کننده آینده نیست.</p>
+    <p class="disclaimer">این محاسبه فقط بر اساس عملکرد گذشته است. هزینه‌ها، مالیات و واریز یا برداشت احتمالی در نظر گرفته نشده‌اند. عملکرد گذشته تضمین‌کننده آینده نیست.</p>
   </section>
 
   <section id="risk" class="panel">
-    <div class="section-head"><div><h2>پرسش‌نامه سنجش ریسک‌پذیری</h2><p>به هر پرسش از صفر تا ده امتیاز بدهید.</p></div></div>
-    <div id="questions" class="questions"></div><button id="calculate-risk">محاسبه پروفایل ریسک</button><div id="risk-result" class="result-card hidden"></div>
-    <p class="disclaimer">این پرسش‌نامه برآوردی آموزشی است و جایگزین ارزیابی مالی یا مشاوره تخصصی نیست.</p>
+    <div class="section-head"><div><h2>چه میزان ریسک برای من مناسب است؟</h2><p>به چند سؤال کوتاه پاسخ دهید تا یک پروفایل تقریبی دریافت کنید.</p></div></div>
+    <div id="questions" class="questions"></div><button id="calculate-risk">نمایش نتیجه من</button><div id="risk-result" class="result-card hidden"></div>
+    <p class="disclaimer">این پرسش‌نامه آموزشی و تقریبی است و توصیه مالی شخصی محسوب نمی‌شود.</p>
   </section>
 
-  <section id="evaluation" class="panel">
-    <div class="section-head"><div><h2>ارزیابی و پایداری مدل</h2><p>نتایج ارزیابی مدل و حساسیت رتبه‌ها به تغییر وزن معیارها.</p></div></div>
-    <h3>ارزیابی درون‌نمونه‌ای</h3><p class="muted">بازده ۱۲ماهه گذشته یکی از ورودی‌های مدل است؛ بنابراین این بخش آزمون پیش‌بینی مستقل نیست.</p><div class="table-wrap"><table><thead><tr><th>گروه</th><th>پروفایل</th><th>تعداد معتبر</th><th>همبستگی اسپیرمن</th><th>همپوشانی ۱۰ رتبه برتر</th><th>وضعیت</th></tr></thead><tbody id="evaluation-body"></tbody></table></div>
-    <h3>ارزیابی برون‌نمونه‌ای</h3><p class="muted">رتبه‌ها با داده‌های پیش از تاریخ تشکیل ساخته و با بازده دوره بعد مقایسه شده‌اند.</p><div class="table-wrap"><table><thead><tr><th>تاریخ تشکیل</th><th>تاریخ ارزیابی</th><th>گروه</th><th>پروفایل</th><th>تعداد</th><th>همبستگی</th><th>وضعیت</th></tr></thead><tbody id="oos-body"></tbody></table></div>
-    <h3>حساسیت رتبه به تغییر وزن‌ها</h3><p class="muted">انحراف معیار رتبه بالاتر به معنی حساسیت بیشتر رتبه به تغییر وزن معیارهاست.</p><label>پروفایل<select id="sensitivity-profile"><option>Conservative</option><option selected>Moderate</option><option>Growth</option><option>Aggressive</option></select></label><div class="table-wrap"><table><thead><tr><th>کد صندوق</th><th>گروه</th><th>میانگین رتبه</th><th>انحراف معیار رتبه</th><th>شبیه‌سازی</th></tr></thead><tbody id="sensitivity-body"></tbody></table></div>
+  <section id="more" class="panel">
+    <div class="section-head"><div><h2>اطلاعات تکمیلی برای علاقه‌مندان</h2><p>شاخص‌های تخصصی حذف نشده‌اند؛ در این بخش می‌توانید معنی آن‌ها را ببینید.</p></div></div>
+    <div class="glossary">
+      <article><h3>بازده</h3><p>نشان می‌دهد ارزش سرمایه در یک بازه چقدر تغییر کرده است. بازده گذشته تضمین آینده نیست.</p></article>
+      <article><h3>نوسان سالانه</h3><p>میزان بالا و پایین شدن بازده را نشان می‌دهد. عدد بزرگ‌تر معمولاً به معنی تغییرات شدیدتر است.</p></article>
+      <article><h3>حداکثر افت</h3><p>بزرگ‌ترین کاهش ارزش صندوق از یک قله قبلی تا کف بعدی در دوره بررسی است.</p></article>
+      <article><h3>نسبت شارپ</h3><p>بازده مازاد نسبت به نوسان را می‌سنجد؛ معمولاً مقدار بالاتر مطلوب‌تر است، اما باید در کنار سایر معیارها دیده شود.</p></article>
+      <article><h3>نسبت سورتینو</h3><p>بازده را نسبت به نوسان‌های منفی می‌سنجد و بیشتر روی ریسکِ افت تمرکز دارد.</p></article>
+      <article><h3>آلفا</h3><p>برآورد می‌کند صندوق نسبت به بازده مورد انتظار با توجه به شاخص مرجع، عملکرد بهتری یا ضعیف‌تری داشته است.</p></article>
+      <article><h3>بتا</h3><p>نشان می‌دهد صندوق نسبت به تغییرات شاخص مرجع چقدر حساس بوده است. بتای نزدیک یک یعنی حساسیت تقریباً مشابه شاخص.</p></article>
+      <article><h3>بازده به ریسک</h3><p>بازده سالانه‌شده تقسیم بر نوسان سالانه است؛ معیاری ساده برای دیدن بازده در برابر میزان نوسان.</p></article>
+      <article><h3>بیشترین و کمترین بازده روزانه</h3><p>بهترین و بدترین تغییر روزانه ثبت‌شده در تاریخچه صندوق را نشان می‌دهد.</p></article>
+    </div>
+    <h3 class="subheading">ارزیابی کیفیت رتبه‌بندی</h3><p class="muted">این قسمت تخصصی‌تر است و برای بررسی روش محاسبه و پایداری رتبه‌ها طراحی شده است.</p>
+    <div class="table-wrap"><table><thead><tr><th>گروه</th><th>پروفایل</th><th>تعداد معتبر</th><th>همبستگی با بازده</th><th>همپوشانی برترین‌ها</th><th>وضعیت</th></tr></thead><tbody id="evaluation-body"></tbody></table></div>
+    <h3 class="subheading">بررسی عملکرد در دوره بعد</h3><div class="table-wrap"><table><thead><tr><th>تاریخ تشکیل</th><th>تاریخ ارزیابی</th><th>گروه</th><th>پروفایل</th><th>تعداد</th><th>همبستگی</th><th>وضعیت</th></tr></thead><tbody id="oos-body"></tbody></table></div>
+    <h3 class="subheading">پایداری رتبه‌ها در برابر تغییر وزن معیارها</h3><label>پروفایل<select id="sensitivity-profile"><option>Conservative</option><option selected>Moderate</option><option>Growth</option><option>Aggressive</option></select></label><div class="table-wrap"><table><thead><tr><th>کد صندوق</th><th>گروه</th><th>میانگین رتبه</th><th>تغییرپذیری رتبه</th><th>تعداد آزمون</th></tr></thead><tbody id="sensitivity-body"></tbody></table></div>
+    <div class="report-actions"><p>می‌توانید فهرست صندوق‌ها را نیز برای بررسی بیشتر دریافت کنید.</p><button id="download-pdf">تهیه گزارش PDF (آزمایشی)</button><button class="secondary" id="download-csv">دریافت فهرست CSV</button></div>
   </section>
-
-  <section id="report" class="panel">
-    <div class="section-head"><div><h2>گزارش PDF</h2><p>گزارش ۳۰ صندوق برتر در پروفایل انتخاب‌شده.</p></div></div>
-    <p>پروفایل را از قسمت رتبه‌بندی انتخاب کنید و سپس گزارش را دریافت کنید.</p><button id="download-pdf">دانلود گزارش PDF</button>
-    <p class="disclaimer">این گزارش برای اهداف پژوهشی و آموزشی است و توصیه سرمایه‌گذاری شخصی محسوب نمی‌شود.</p>
-  </section>
-  <footer>سامانه پژوهشی رتبه‌بندی صندوق‌های سرمایه‌گذاری · خروجی داده‌های پردازش‌شده · <span id="generated-at"></span><p>این رتبه‌بندی توصیه سرمایه‌گذاری شخصی یا تضمین عملکرد آینده نیست.</p></footer>
+  <footer>صندوق‌نگر · ابزار پژوهشی و آموزشی برای شناخت و مقایسه صندوق‌های سرمایه‌گذاری · <span id="generated-at"></span><p>رتبه‌بندی‌ها توصیه سرمایه‌گذاری شخصی یا تضمین عملکرد آینده نیستند.</p></footer>
 </main>
 <script src="./app.js"></script>
 </body></html>
