@@ -42,8 +42,11 @@ jobs:
           if [ -d metadata_snapshots ]; then
             git add metadata_snapshots/
           fi
+          if [ -d ranking_snapshots ]; then
+            git add ranking_snapshots/
+          fi
           if ! git diff --cached --quiet; then
-            git commit -m "data: archive scheme metadata snapshot"
+            git commit -m "data: archive metadata and ranking snapshots"
             git push
           else
             echo "No new metadata snapshot to commit."
