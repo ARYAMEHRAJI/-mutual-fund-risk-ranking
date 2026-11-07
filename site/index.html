@@ -22,18 +22,26 @@
   </section>
   <div class="intro-note"><strong>از کجا شروع کنم؟</strong> ابتدا میزان ریسک‌پذیری را انتخاب کنید، سپس صندوق‌ها را بر اساس بازده و میزان افت و نوسان مقایسه کنید. رتبه بالاتر به‌تنهایی به معنی مناسب‌تر بودن برای همه نیست.</div>
   <div id="load-error" class="notice error hidden"></div>
-  <nav class="tabs" aria-label="بخش‌های داشبورد">
-    <button class="tab active" data-tab="ranking">پیدا کردن صندوق</button>
+  <nav class="tabs hidden" aria-label="بخش‌های داشبورد">
+    <button class="tab active" data-tab="recommendations">پیشنهادهای من</button>
+    <button class="tab" data-tab="ranking">پیدا کردن صندوق</button>
     <button class="tab" data-tab="compare">مقایسه صندوق‌ها</button>
     <button class="tab" data-tab="simulation">محاسبه رشد سرمایه</button>
-    <button class="tab" data-tab="risk">سنجش ریسک‌پذیری</button>
+    <button class="tab" data-tab="risk">تغییر سطح ریسک</button>
+    <button class="tab" data-tab="screening">غربالگر پیشرفته</button>
     <button class="tab" data-tab="expert">تحلیل تخصصی</button>
     <button class="tab" data-tab="more">راهنما و روش‌شناسی</button>
   </nav>
 
-  <section id="ranking" class="panel active">
+  <section id="recommendations" class="panel">
+    <div class="section-head"><div><h2>پیشنهادهای متناسب با ریسک شما</h2><p>پیشنهادها بر اساس رتبه‌بندی صندوق‌ها در پروفایل ریسک انتخاب‌شده محاسبه می‌شوند.</p></div><span id="recommendation-profile" class="rank-pill">پروفایل شما</span></div>
+    <div class="recommendation-actions"><button id="recommend-one">معرفی یک صندوق</button><button id="recommend-five" class="secondary">معرفی پنج صندوق برتر</button><button id="recommend-portfolio" class="secondary">معرفی یک سبد متنوع</button></div>
+    <div id="recommendation-note" class="intro-note">برای دریافت پیشنهاد، یکی از دکمه‌های بالا را انتخاب کنید.</div><div id="recommendation-list" class="fund-list"></div>
+    <p class="disclaimer">این پیشنهادها خروجی یک مدل رتبه‌بندی پژوهشی هستند، نه توصیه قطعی خرید. سبد پیشنهادی با وزن مساوی و تنوع گروهی ساخته می‌شود و جایگزین بررسی اهداف، افق زمانی و شرایط مالی شما نیست.</p>
+  </section>
+  <section id="ranking" class="panel">
     <div class="section-head"><div><h2>صندوق‌ها را پیدا کنید</h2><p>یک پروفایل انتخاب کنید و صندوق‌های هم‌گروه را با هم بسنجید.</p></div>
-      <label class="profile-select">میزان ریسک‌پذیری<select id="profile"><option value="conservative">کم‌ریسک</option><option value="moderate" selected>متعادل</option><option value="growth">رشدگرا</option><option value="aggressive">ریسک‌پذیر</option></select></label>
+      <label class="profile-select">پروفایل حاصل از پرسش‌نامه<select id="profile" disabled><option value="conservative">کم‌ریسک</option><option value="moderate" selected>متعادل</option><option value="growth">رشدگرا</option><option value="aggressive">ریسک‌پذیر</option></select></label>
     </div>
     <div class="profile-hint" id="profile-hint">در حالت متعادل، میان بازده و ریسک توازن بیشتری در نظر گرفته می‌شود.</div>
     <div class="metrics-grid compact">
@@ -66,7 +74,7 @@
     <p class="disclaimer">این محاسبه فقط بر اساس عملکرد گذشته است. هزینه‌ها، مالیات و واریز یا برداشت احتمالی در نظر گرفته نشده‌اند. عملکرد گذشته تضمین‌کننده آینده نیست.</p>
   </section>
 
-  <section id="risk" class="panel">
+  <section id="risk" class="panel active">
     <div class="section-head"><div><h2>چه میزان ریسک برای من مناسب است؟</h2><p>به چند سؤال کوتاه پاسخ دهید تا یک پروفایل تقریبی دریافت کنید.</p></div></div>
     <div id="questions" class="questions"></div><button id="calculate-risk">نمایش نتیجه من</button><div id="risk-result" class="result-card hidden"></div>
     <p class="disclaimer">این پرسش‌نامه آموزشی و تقریبی است و توصیه مالی شخصی محسوب نمی‌شود.</p>
@@ -79,6 +87,22 @@
     <div class="filters"><label>پروفایل رتبه‌بندی<select id="expert-profile"><option value="conservative">کم‌ریسک</option><option value="moderate" selected>متعادل</option><option value="growth">رشدگرا</option><option value="aggressive">ریسک‌پذیر</option></select></label><label>گروه صندوق<select id="expert-group"><option value="">همه گروه‌ها</option></select></label><label class="search-label">جست‌وجوی صندوق<input id="expert-search" type="search" placeholder="نام یا کد صندوق…"></label></div>
     <div class="table-wrap expert-table-wrap"><table><thead><tr><th>رتبه</th><th>نام صندوق</th><th>گروه</th><th>بازده یک‌ساله</th><th>بازده کل دوره</th><th>نوسان سالانه</th><th>حداکثر افت</th><th>آلفا</th><th>بتا</th><th>شارپ</th><th>سورتینو</th><th>بازده به ریسک</th><th>بهترین روز</th><th>بدترین روز</th><th>شاخص مرجع</th></tr></thead><tbody id="expert-body"></tbody></table></div>
     <p class="muted">مقادیر خالی به معنی نبود داده معتبر یا کافی است؛ صفر فرض نشده‌اند.</p>
+  </section>
+
+
+  <section id="screening" class="panel">
+    <div class="section-head"><div><h2>غربالگر پیشرفته صندوق‌های سرمایه‌گذاری</h2><p>با اولویت‌های خودت رتبه‌بندی هوشمند بگیر یا با فیلترهای دقیق صندوق‌ها را بررسی کن.</p></div><span class="rank-pill">ابزار حرفه‌ای</span></div>
+    <div class="screen-mode"><button class="screen-mode-btn active" data-screen-mode="smart">رتبه‌بندی هوشمند</button><button class="screen-mode-btn" data-screen-mode="precise">غربالگر دقیق</button></div>
+    <section id="smart-screen" class="screen-subpanel active"><h3>۱. چه چیزی برای تو مهمه؟</h3><p class="muted">یک الگوی آماده انتخاب کن یا وزن معیارها را دستی تغییر بده. فقط معیارهایی نمایش داده می‌شوند که داده معتبرشان در پروژه وجود دارد.</p>
+      <div class="preset-row"><button class="preset-btn" data-preset="growth">رشد‌محور</button><button class="preset-btn" data-preset="lowrisk">کم‌ریسک</button><button class="preset-btn active" data-preset="balanced">متعادل</button></div>
+      <div class="weight-summary">مجموع وزن‌ها: <strong id="screen-weight-total">۱۰۰</strong></div><div id="screen-weight-controls" class="weight-grid"></div>
+      <div class="result-caption"><strong>نتیجه رتبه‌بندی هوشمند</strong><span>امتیازها بر پایه رتبه نسبی هر معیار در گروه مقایسه‌ای صندوق محاسبه می‌شوند.</span></div>
+      <div class="table-wrap"><table><thead><tr><th>رتبه</th><th>نام صندوق</th><th>گروه</th><th>امتیاز هوشمند</th><th>بازده یک‌ساله</th><th>نوسان</th><th>حداکثر افت</th><th>پوشش داده</th></tr></thead><tbody id="smart-screen-body"></tbody></table></div>
+    </section>
+    <section id="precise-screen" class="screen-subpanel"><h3>۲. غربالگر دقیق</h3><p class="muted">حداقل بازده و حداکثر ریسک موردنظر را تعیین کن؛ سپس ستون دلخواه را مرتب کن.</p>
+      <div class="filters screener-filters"><label>گروه صندوق<select id="precise-group"><option value="">همه گروه‌ها</option></select></label><label>حداقل بازده یک‌ساله (%)<input id="filter-return12" type="number" step="0.5" placeholder="بدون محدودیت"></label><label>حداقل بازده شش‌ماهه (%)<input id="filter-return6" type="number" step="0.5" placeholder="بدون محدودیت"></label><label>حداقل بازده سه‌ماهه (%)<input id="filter-return3" type="number" step="0.5" placeholder="بدون محدودیت"></label><label>حداقل بازده یک‌ماهه (%)<input id="filter-return1" type="number" step="0.5" placeholder="بدون محدودیت"></label><label>حداکثر نوسان سالانه (%)<input id="filter-volatility" type="number" min="0" step="0.5" placeholder="بدون محدودیت"></label><label>حداکثر افت مجاز (%)<input id="filter-drawdown" type="number" min="0" step="0.5" placeholder="بدون محدودیت"></label><label>حداقل نسبت شارپ<input id="filter-sharpe" type="number" step="0.1" placeholder="بدون محدودیت"></label><label>حداقل نسبت سورتینو<input id="filter-sortino" type="number" step="0.1" placeholder="بدون محدودیت"></label><label>مرتب‌سازی بر اساس<select id="precise-sort"><option value="composite">امتیاز پروفایل ریسک</option><option value="return_12m">بازده یک‌ساله</option><option value="return_6m">بازده شش‌ماهه</option><option value="return_3m">بازده سه‌ماهه</option><option value="return_1m">بازده یک‌ماهه</option><option value="volatility">نوسان سالانه</option><option value="max_drawdown">حداکثر افت</option><option value="sharpe_ratio">نسبت شارپ</option><option value="sortino_ratio">نسبت سورتینو</option></select></label><label>ترتیب<select id="precise-order"><option value="desc">بیشترین به کمترین</option><option value="asc">کمترین به بیشترین</option></select></label></div>
+      <div class="result-caption"><strong>صندوق‌های منطبق</strong><span id="precise-count">—</span></div><div class="table-wrap"><table><thead><tr><th>نام صندوق</th><th>گروه</th><th>بازده یک‌ساله</th><th>شش‌ماهه</th><th>سه‌ماهه</th><th>یک‌ماهه</th><th>نوسان</th><th>حداکثر افت</th><th>شارپ</th><th>سورتینو</th></tr></thead><tbody id="precise-screen-body"></tbody></table></div>
+    </section><p class="disclaimer">در نسخه فعلی داده معتبر برای نقدشوندگی، ورود پول، حباب، اندازه دارایی و گردش پرتفوی مدیر در دسترس نیست؛ بنابراین این فیلترها در رتبه‌بندی لحاظ نشده‌اند.</p>
   </section>
 
   <section id="more" class="panel">
