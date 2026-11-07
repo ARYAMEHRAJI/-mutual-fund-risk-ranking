@@ -12,7 +12,7 @@ def test_metrics_include_period_extremes_and_return_to_risk():
     })
     row = calculate_fund_metrics(nav, risk_free_rate=0.0).iloc[0]
     assert np.isclose(row["period_end_return"], 0.06)
-    assert np.isclose(row["best_daily_return"], 0.04 / 101)
+    assert np.isclose(row["best_daily_return"], 3 / 101)
     assert np.isclose(row["worst_daily_return"], -1 / 102)
     assert np.isfinite(row["annualized_return_to_volatility"])
     assert np.isfinite(row["volatility"])
