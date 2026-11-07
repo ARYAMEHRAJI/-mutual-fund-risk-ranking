@@ -5,10 +5,15 @@ on:
     - cron: "30 2 * * 1-5"
 permissions:
   contents: write
+  pages: write
+  id-token: write
 jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,12 +25,23 @@ jobs:
         env:
           TIGZIG_REQUEST_DELAY: "21"
         run: python scripts/run_pipeline.py
+      - name: Export data for static web dashboard
+        run: python scripts/export_static_dashboard.py
       - name: Store refreshed datasets as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mutual-fund-rankings
           path: data/processed/
           retention-days: 14
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload static dashboard
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+      - name: Publish static dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4
       - name: Store metadata snapshot as workflow artifact
         if: always()
         uses: actions/upload-artifact@v4
