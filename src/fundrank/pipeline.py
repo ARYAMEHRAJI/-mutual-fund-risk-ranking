@@ -16,10 +16,7 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     client = TigzigClient()
     metadata = client.latest_funds()
 
-    # Preserve the complete provider metadata before applying today's active-
-    # fund, plan, option, history, and freshness filters. These dated snapshots
-    # build a point-in-time universe for future evaluations; they cannot
-    # reconstruct historical metadata from before snapshot collection began.
+    # Save the complete provider universe before today's eligibility filters.
     snapshot_dir = Path("metadata_snapshots")
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     snapshot_path = snapshot_dir / f"{as_of_date:%Y-%m-%d}.json"
@@ -77,8 +74,7 @@ def run_pipeline(output_dir="data/processed", refresh=True):
         output / "weight_sensitivity.csv", index=False
     )
 
-    # Pass validated raw NAV so each historical formation date can be
-    # cleaned independently without seeing observations from its future.
+    # Each historical formation date is cleaned without seeing its future.
     out_of_sample = evaluate_out_of_sample(
         nav, eligible_meta, as_of_date=as_of_date,
         horizon_months=12, windows=3,

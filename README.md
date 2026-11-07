@@ -71,3 +71,15 @@ The API republishes Indian mutual-fund NAV data sourced from AMFI. Review the pr
 ## Disclaimer
 
 For research and educational use only. Quantitative rankings are not personalised investment advice or guarantees of future performance.
+
+## Dashboard tools
+
+The dashboard also includes:
+- Side-by-side comparison of two to five funds.
+- A simple equal-weight shortlist of the highest-ranked funds in the selected risk profile. This is an educational allocation example, not a diversified multi-asset portfolio.
+- A hypothetical capital-growth chart based on historical cleaned NAV, with a user-selected starting amount.
+- A relative 0-100 risk score based on each fund's volatility and absolute maximum drawdown percentile; higher means riskier within the current dataset.
+- The existing ten-question risk questionnaire, now available in the dashboard.
+- A PDF report of up to 30 top-ranked funds.
+
+These tools do not change the underlying ranking formula. They are intended for analysis and demonstration, not personal investment advice.
