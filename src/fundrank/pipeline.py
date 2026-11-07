@@ -52,8 +52,7 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     cleaned.to_parquet(output / "nav_clean.parquet", index=False)
 
     metrics = calculate_fund_metrics(cleaned)
-    metrics.attrs["daily_returns"] = daily_fund_returns(cleaned)
-    metrics = add_benchmark_metrics(metrics, eligible)
+    metrics = add_benchmark_metrics(metrics, eligible, nav_returns=daily_fund_returns(cleaned))
     meta_cols = [col for col in [
         "scheme_code", "category_group_clean", "category_sub", "amc",
         "scheme_plan", "scheme_option",
