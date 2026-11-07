@@ -30,6 +30,13 @@ def calculate_fund_metrics(nav, risk_free_rate=RISK_FREE_RATE,
         values = group["nav_clean"].astype(float)
         daily = values.pct_change().dropna()
         latest = float(values.iloc[-1])
+        annual_mean = float(daily.mean() * TRADING_DAYS) if len(daily) else np.nan
+        std = float(daily.std(ddof=1)) if len(daily) > 1 else np.nan
+        annual_vol = std * np.sqrt(TRADING_DAYS) if np.isfinite(std) else np.nan
+        downside = np.minimum(daily.to_numpy(dtype=float), 0.0)
+        downside_dev = float(np.sqrt(np.mean(np.square(downside)))) if len(downside) else np.nan
+        annual_downside = downside_dev * np.sqrt(TRADING_DAYS) if np.isfinite(downside_dev) else np.nan
+
         row = {
             "scheme_code": int(code),
             "scheme_name": group["scheme_name"].iloc[-1] if "scheme_name" in group else None,
@@ -37,28 +44,27 @@ def calculate_fund_metrics(nav, risk_free_rate=RISK_FREE_RATE,
             "last_date": group["date"].iloc[-1],
             "observations": int(len(group)),
             "total_return": latest / float(values.iloc[0]) - 1,
+            "period_end_return": latest / float(values.iloc[0]) - 1,
+            "best_daily_return": float(daily.max()) if len(daily) else np.nan,
+            "worst_daily_return": float(daily.min()) if len(daily) else np.nan,
+            "annualized_return_to_volatility": (
+                annual_mean / annual_vol
+                if np.isfinite(annual_vol) and annual_vol >= min_risk_denominator else np.nan
+            ),
+            "volatility": annual_vol,
+            "max_drawdown": float((values / values.cummax() - 1).min()),
+            "sharpe_ratio": (
+                (annual_mean - risk_free_rate) / annual_vol
+                if np.isfinite(annual_vol) and annual_vol >= min_risk_denominator else np.nan
+            ),
+            "sortino_ratio": (
+                (annual_mean - risk_free_rate) / annual_downside
+                if np.isfinite(annual_downside) and annual_downside >= min_risk_denominator else np.nan
+            ),
         }
         for label, months in periods.items():
             base = _nav_at_or_before(group, as_of - pd.DateOffset(months=months))
             row[f"return_{label}"] = latest / base - 1 if np.isfinite(base) and base > 0 else np.nan
-
-        std = float(daily.std(ddof=1)) if len(daily) > 1 else np.nan
-        annual_mean = float(daily.mean() * TRADING_DAYS) if len(daily) else np.nan
-        annual_vol = std * np.sqrt(TRADING_DAYS) if np.isfinite(std) else np.nan
-        row["volatility"] = annual_vol
-        row["max_drawdown"] = float((values / values.cummax() - 1).min())
-        # A near-zero denominator makes a risk-adjusted ratio numerically unstable.
-        row["sharpe_ratio"] = (
-            (annual_mean - risk_free_rate) / annual_vol
-            if np.isfinite(annual_vol) and annual_vol >= min_risk_denominator else np.nan
-        )
-        downside = np.minimum(daily.to_numpy(dtype=float), 0.0)
-        downside_dev = float(np.sqrt(np.mean(np.square(downside)))) if len(downside) else np.nan
-        annual_downside = downside_dev * np.sqrt(TRADING_DAYS) if np.isfinite(downside_dev) else np.nan
-        row["sortino_ratio"] = (
-            (annual_mean - risk_free_rate) / annual_downside
-            if np.isfinite(annual_downside) and annual_downside >= min_risk_denominator else np.nan
-        )
         rows.append(row)
 
     result = pd.DataFrame(rows)
