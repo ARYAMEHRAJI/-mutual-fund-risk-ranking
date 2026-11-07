@@ -17,7 +17,7 @@
 </header>
 <main class="container">
   <section class="hero">
-    <div><p class="eyebrow">MUTUAL FUND RESEARCH DASHBOARD</p><h1>تحلیل و رتبه‌بندی صندوق‌های سرمایه‌گذاری</h1><p>مقایسه کمی صندوق‌ها بر اساس بازده، ریسک و چهار پروفایل سرمایه‌گذاری</p></div>
+    <div><p class="eyebrow">MUTUAL FUND RESEARCH DASHBOARD</p><h1>تحلیل و رتبه‌بندی صندوق‌های سرمایه‌گذاری</h1><p>مقایسه بازده و ریسک، همراه با آلفا و بتا نسبت به شاخص مرجع متناسب با استراتژی صندوق</p></div>
     <div class="hero-stat"><span>تعداد صندوق‌های بررسی‌شده</span><strong id="fund-count">—</strong></div>
   </section>
   <div id="load-error" class="notice error hidden"></div>
@@ -46,7 +46,7 @@
       <label>حداقل پوشش وزن‌ها <span id="coverage-label">70%</span><input id="coverage-filter" type="range" min="0" max="100" value="70"></label>
       <label class="search-label">جست‌وجوی نام یا کد<input id="search" type="search" placeholder="نام یا کد صندوق…"></label>
     </div>
-    <div class="table-wrap"><table><thead><tr><th>رتبه</th><th>نام صندوق</th><th>کد</th><th>گروه</th><th>امتیاز</th><th>پوشش</th><th>بازده ۱۲ماهه</th><th>نوسان</th><th>افت بیشینه</th><th>ریسک</th></tr></thead><tbody id="ranking-body"><tr><td colspan="10">در حال بارگذاری…</td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>رتبه</th><th>نام صندوق</th><th>کد</th><th>گروه</th><th>امتیاز</th><th>پوشش</th><th>بازده ۱۲ماهه</th><th>نوسان سالانه</th><th>افت بیشینه</th><th>شاخص مرجع</th><th>آلفا</th><th>بتا</th><th>بیشترین روز</th><th>کمترین روز</th><th>بازده به ریسک</th><th>ریسک</th></tr></thead><tbody id="ranking-body"><tr><td colspan="16">در حال بارگذاری…</td></tr></tbody></table></div>
     <div class="chart-card"><div class="section-head"><h3>نقشه ریسک و بازده</h3><small>هر نقطه نماینده یک صندوق است.</small></div><canvas id="scatter-chart"></canvas></div>
     <button class="secondary" id="download-csv">دریافت نتایج CSV</button>
   </section>
