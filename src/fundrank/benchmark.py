@@ -41,16 +41,16 @@ def resolve_benchmark(row):
 
     # Index funds should track their disclosed underlying index when its name
     # is recognisable; broad equity funds use a broad-market TRI proxy.
-    if "nifty 50" in name:
-        return "NIFTY_50_TRI", "Nifty 50 TRI"
+    if "nifty 500" in name or "nifty total market" in name:
+        return "NIFTY_500_TRI", "Nifty 500 TRI"
     if "nifty next 50" in name:
         return "NIFTY_NEXT_50_TRI", "Nifty Next 50 TRI"
     if "nifty midcap 150" in name:
         return "NIFTY_MIDCAP_150_TRI", "Nifty Midcap 150 TRI"
     if "nifty smallcap 250" in name:
         return "NIFTY_SMALLCAP_250_TRI", "Nifty Smallcap 250 TRI"
-    if "nifty 500" in name or "nifty total market" in name:
-        return "NIFTY_500_TRI", "Nifty 500 TRI"
+    if "nifty 50" in name:
+        return "NIFTY_50_TRI", "Nifty 50 TRI"
 
     for clue, benchmark in SECTOR_BENCHMARKS.items():
         if clue in text:
