@@ -56,6 +56,8 @@ def resolve_benchmark(row):
         if clue in text:
             return benchmark
 
+    if "leverag" in name or "index" in name:
+        return "NIFTY_50_TRI", "Nifty 50 TRI"
     if any(term in text for term in ("equity", "large cap", "mid cap", "small cap", "flexi cap",
                                       "multi cap", "focused", "value", "contra", "large & mid")):
         return "NIFTY_500_TRI", "Nifty 500 TRI"
@@ -106,6 +108,9 @@ def add_benchmark_metrics(metrics, metadata, levels_path="data/benchmarks/index_
         if not benchmark_id:
             continue
         benchmark = levels.loc[levels["benchmark_id"].eq(benchmark_id), ["date", "benchmark_return"]]
+        if benchmark.empty:
+            result.loc[result["scheme_code"].eq(row["scheme_code"]), "benchmark_status"] = "benchmark_series_missing"
+            continue
         fund = nav_returns.loc[nav_returns["scheme_code"].eq(row["scheme_code"]), ["date", "fund_return"]]
         paired = fund.merge(benchmark, on="date", how="inner").dropna()
         if len(paired) < MIN_BENCHMARK_OBSERVATIONS:
