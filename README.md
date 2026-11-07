@@ -81,6 +81,5 @@ The dashboard also includes:
 - A relative 0-100 risk score based on each fund's volatility and absolute maximum drawdown percentile; higher means riskier within the current dataset.
 - The existing ten-question risk questionnaire, now available in the dashboard.
 - A PDF report of up to 30 top-ranked funds.
-- A dated ranking history. Ranking snapshots start with the first pipeline run after this feature is enabled; earlier ranks cannot be reconstructed from the current data.
 
 These tools do not change the underlying ranking formula. They are intended for analysis and demonstration, not personal investment advice.
