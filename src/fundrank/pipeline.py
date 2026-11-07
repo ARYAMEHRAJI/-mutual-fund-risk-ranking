@@ -64,21 +64,6 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     ranked.to_csv(output / "fund_rankings.csv", index=False)
     ranked.to_parquet(output / "fund_rankings.parquet", index=False)
 
-    # Keep a small dated copy of ranks so the dashboard can plot future changes.
-    history_dir = Path("ranking_snapshots")
-    history_dir.mkdir(parents=True, exist_ok=True)
-    history_columns = [
-        column for column in [
-            "scheme_code", "scheme_name", "ranking_group",
-            "rank_conservative", "rank_moderate", "rank_growth", "rank_aggressive",
-            "composite_conservative", "composite_moderate",
-            "composite_growth", "composite_aggressive",
-        ] if column in ranked.columns
-    ]
-    history_path = history_dir / f"{as_of_date:%Y-%m-%d}.csv"
-    ranked[history_columns].to_csv(history_path, index=False)
-    print(f"Saved ranking history snapshot: {history_path}")
-
     evaluation = evaluate_rankings(ranked)
     evaluation.to_csv(output / "ranking_evaluation.csv", index=False)
     sensitivity = [
