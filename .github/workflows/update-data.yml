@@ -63,6 +63,8 @@ jobs:
           retention-days: 14
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Upload static dashboard
         uses: actions/upload-pages-artifact@v3
         with:
