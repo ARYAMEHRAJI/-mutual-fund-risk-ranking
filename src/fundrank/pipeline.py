@@ -5,6 +5,7 @@ import pandas as pd
 from .cleaning import correct_scale_anomalies, validate_nav
 from .data import TigzigClient
 from .metrics import calculate_fund_metrics
+from .benchmark import add_benchmark_metrics, daily_fund_returns
 from .scoring import build_rankings
 from .evaluation import evaluate_rankings, evaluate_out_of_sample, weight_sensitivity
 
@@ -16,7 +17,6 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     client = TigzigClient()
     metadata = client.latest_funds()
 
-    # Save the complete provider universe before today's eligibility filters.
     snapshot_dir = Path("metadata_snapshots")
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     snapshot_path = snapshot_dir / f"{as_of_date:%Y-%m-%d}.json"
@@ -52,12 +52,12 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     cleaned.to_parquet(output / "nav_clean.parquet", index=False)
 
     metrics = calculate_fund_metrics(cleaned)
-    meta_cols = [
-        col for col in [
-            "scheme_code", "category_group_clean", "category_sub", "amc",
-            "scheme_plan", "scheme_option",
-        ] if col in eligible.columns
-    ]
+    metrics.attrs["daily_returns"] = daily_fund_returns(cleaned)
+    metrics = add_benchmark_metrics(metrics, eligible)
+    meta_cols = [col for col in [
+        "scheme_code", "category_group_clean", "category_sub", "amc",
+        "scheme_plan", "scheme_option",
+    ] if col in eligible.columns]
     eligible_meta = eligible[meta_cols].drop_duplicates("scheme_code")
     enriched = metrics.merge(eligible_meta, on="scheme_code", how="left")
     ranked = build_rankings(enriched)
@@ -70,23 +70,15 @@ def run_pipeline(output_dir="data/processed", refresh=True):
         weight_sensitivity(ranked, profile=name, simulations=100)
         for name in ["Conservative", "Moderate", "Growth", "Aggressive"]
     ]
-    pd.concat(sensitivity, ignore_index=True).to_csv(
-        output / "weight_sensitivity.csv", index=False
-    )
-
-    # Each historical formation date is cleaned without seeing its future.
+    pd.concat(sensitivity, ignore_index=True).to_csv(output / "weight_sensitivity.csv", index=False)
     out_of_sample = evaluate_out_of_sample(
-        nav, eligible_meta, as_of_date=as_of_date,
-        horizon_months=12, windows=3,
+        nav, eligible_meta, as_of_date=as_of_date, horizon_months=12, windows=3,
     )
     out_of_sample.to_csv(output / "out_of_sample_evaluation.csv", index=False)
 
     print(f"Excluded future-dated NAV rows: {len(future_nav):,}")
     print(f"Pipeline complete: {len(ranked):,} funds")
     print(f"Latest NAV date: {pd.to_datetime(cleaned['date']).max()}")
-    evaluated = (
-        int(out_of_sample["evaluation_status"].eq("evaluated").sum())
-        if not out_of_sample.empty else 0
-    )
+    evaluated = int(out_of_sample["evaluation_status"].eq("evaluated").sum()) if not out_of_sample.empty else 0
     print(f"Out-of-sample evaluation rows: {evaluated:,}")
     return ranked
