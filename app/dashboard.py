@@ -20,7 +20,6 @@ EVALUATION = ROOT / "data" / "processed" / "ranking_evaluation.csv"
 OUT_OF_SAMPLE = ROOT / "data" / "processed" / "out_of_sample_evaluation.csv"
 NAV_CLEAN = ROOT / "data" / "processed" / "nav_clean.parquet"
 SENSITIVITY = ROOT / "data" / "processed" / "weight_sensitivity.csv"
-HISTORY_DIR = ROOT / "ranking_snapshots"
 
 st.set_page_config(page_title="Mutual Fund Risk & Return Ranking", layout="wide")
 st.title("Mutual Fund Risk & Return Ranking")
@@ -56,7 +55,7 @@ d.metric("میانگین امتیاز ریسک", f"{df['risk_score'].mean():.1f}
 
 tabs = st.tabs([
     "رتبه‌بندی اصلی", "مقایسه صندوق‌ها", "ترکیب پیشنهادی",
-    "پرسش‌نامه ریسک", "تاریخچه رتبه‌ها", "گزارش PDF",
+    "پرسش‌نامه ریسک", "گزارش PDF",
 ])
 
 with tabs[0]:
@@ -240,35 +239,6 @@ with tabs[3]:
     st.caption("این نتیجه جایگزین ارزیابی مالی، نیاز نقدینگی یا مشاوره تخصصی نیست.")
 
 with tabs[4]:
-    st.subheader("تاریخچه تغییر رتبه صندوق‌ها")
-    snapshots = sorted(HISTORY_DIR.glob("*.csv")) if HISTORY_DIR.exists() else []
-    if len(snapshots) < 2:
-        st.info("برای نمایش روند تاریخی، حداقل دو اجرای جدید لازم است. سامانه از این نسخه به بعد در هر اجرای موفق، رتبه‌ها را ذخیره می‌کند؛ داده تاریخی قبل از فعال‌سازی این قابلیت قابل بازسازی نیست.")
-    else:
-        history_frames = []
-        for snapshot_file in snapshots:
-            frame = pd.read_csv(snapshot_file)
-            frame["snapshot_date"] = snapshot_file.stem
-            history_frames.append(frame)
-        history = pd.concat(history_frames, ignore_index=True)
-        history_funds = history[["scheme_name", "scheme_code"]].drop_duplicates()
-        history_options = {
-            f"{row.scheme_name} | {row.scheme_code}": row.scheme_code
-            for row in history_funds.itertuples(index=False)
-        }
-        chosen_history_fund = st.selectbox("صندوق", list(history_options.keys()))
-        history_code = history_options[chosen_history_fund]
-        history_column = f"rank_{profile}"
-        if history_column in history.columns:
-            trend = history[history["scheme_code"] == history_code].dropna(subset=[history_column])
-            trend = trend.sort_values("snapshot_date")
-            if not trend.empty:
-                st.line_chart(trend.set_index("snapshot_date")[history_column], y_label="رتبه (عدد کمتر بهتر)")
-                st.dataframe(trend[["snapshot_date", "scheme_name", history_column]], use_container_width=True, hide_index=True)
-            else:
-                st.info("برای این صندوق هنوز رتبه‌ای در تاریخچه ثبت نشده است.")
-
-with tabs[5]:
     st.subheader("دریافت گزارش PDF")
     st.write("گزارش شامل حداکثر ۳۰ صندوق برتر در پروفایل انتخاب‌شده و شاخص‌های اصلی آن‌هاست.")
     report_data = df.sort_values(score_col, ascending=False)
