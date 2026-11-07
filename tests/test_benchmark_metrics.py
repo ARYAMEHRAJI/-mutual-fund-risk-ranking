@@ -28,7 +28,6 @@ def test_alpha_beta_calculated_from_aligned_benchmark_returns(tmp_path):
     fund_levels = 50 * np.cumprod(1 + fund_returns)
     nav = pd.DataFrame({"scheme_code": [1] * len(dates), "date": dates, "nav_clean": fund_levels})
     metrics = calculate_fund_metrics(nav)
-    metrics.attrs["daily_returns"] = daily_fund_returns(nav)
     metadata = pd.DataFrame({
         "scheme_code": [1], "scheme_name": ["Example Nifty 500 Equity Fund"],
         "category_sub": ["Equity - Large Cap"], "category_group_clean": ["Equity"],
@@ -36,7 +35,7 @@ def test_alpha_beta_calculated_from_aligned_benchmark_returns(tmp_path):
     pd.DataFrame({
         "date": dates, "benchmark_id": "NIFTY_500_TRI", "index_value": benchmark_levels,
     }).to_csv(tmp_path / "index_levels.csv", index=False)
-    result = add_benchmark_metrics(metrics, metadata, tmp_path / "index_levels.csv")
+    result = add_benchmark_metrics(metrics, metadata, nav_returns=daily_fund_returns(nav), levels_path=tmp_path / "index_levels.csv")
     row = result.iloc[0]
     assert row["benchmark_status"] == "ok"
     assert row["benchmark_observations"] == 89
@@ -56,7 +55,7 @@ def test_alpha_beta_are_missing_without_benchmark_history(tmp_path):
         "scheme_code": [1], "scheme_name": ["Example Nifty 500 Equity Fund"],
         "category_sub": ["Equity"], "category_group_clean": ["Equity"],
     })
-    result = add_benchmark_metrics(metrics, metadata, tmp_path / "missing.csv")
+    result = add_benchmark_metrics(metrics, metadata, nav_returns=daily_fund_returns(nav), levels_path=tmp_path / "missing.csv")
     assert pd.isna(result.loc[0, "alpha"])
     assert pd.isna(result.loc[0, "beta"])
     assert result.loc[0, "benchmark_status"] == "benchmark_history_missing"
