@@ -18,6 +18,7 @@ from fundrank.questionnaire import score_risk_questionnaire
 DATA = ROOT / "data" / "processed" / "fund_rankings.parquet"
 EVALUATION = ROOT / "data" / "processed" / "ranking_evaluation.csv"
 OUT_OF_SAMPLE = ROOT / "data" / "processed" / "out_of_sample_evaluation.csv"
+NAV_CLEAN = ROOT / "data" / "processed" / "nav_clean.parquet"
 SENSITIVITY = ROOT / "data" / "processed" / "weight_sensitivity.csv"
 HISTORY_DIR = ROOT / "ranking_snapshots"
 
@@ -175,6 +176,43 @@ with tabs[2]:
         st.metric("وزن هر صندوق", f"{100 / len(portfolio):.1f}%")
     else:
         st.warning("برای این گروه، صندوق واجد شرایط کافی وجود ندارد.")
+
+    if NAV_CLEAN.exists():
+        st.divider()
+        st.subheader("شبیه‌سازی رشد سرمایه در گذشته")
+        growth_options = {
+            f"{row.scheme_name} | {row.scheme_code}": row.scheme_code
+            for row in df[["scheme_name", "scheme_code"]].drop_duplicates().itertuples(index=False)
+        }
+        growth_choice = st.selectbox("صندوق برای شبیه‌سازی", list(growth_options.keys()), key="growth_fund")
+        initial_capital = st.number_input(
+            "سرمایه اولیه فرضی", min_value=1000.0, value=100000.0, step=10000.0,
+            key="initial_capital",
+        )
+        nav_history = pd.read_parquet(NAV_CLEAN)
+        growth_nav = nav_history[nav_history["scheme_code"] == growth_options[growth_choice]].copy()
+        growth_nav["date"] = pd.to_datetime(growth_nav["date"])
+        growth_nav = growth_nav.sort_values("date")
+        growth_nav = growth_nav[pd.to_numeric(growth_nav["nav_clean"], errors="coerce") > 0]
+        if len(growth_nav) >= 2:
+            growth_nav["simulated_value"] = (
+                initial_capital * growth_nav["nav_clean"] / float(growth_nav["nav_clean"].iloc[0])
+            )
+            st.line_chart(
+                growth_nav.set_index("date")["simulated_value"],
+                y_label="ارزش فرضی سرمایه",
+                use_container_width=True,
+            )
+            final_value = float(growth_nav["simulated_value"].iloc[-1])
+            change_pct = (final_value / initial_capital - 1) * 100
+            m1, m2 = st.columns(2)
+            m1.metric("ارزش نهایی فرضی", f"{final_value:,.0f}")
+            m2.metric("بازده کل دوره", f"{change_pct:+.1f}%")
+            st.caption("این شبیه‌سازی بر اساس تغییر NAV است و هزینه‌ها، مالیات، جریان واریز/برداشت و محدودیت نقدشوندگی را لحاظ نمی‌کند؛ عملکرد گذشته تضمین‌کننده آینده نیست.")
+        else:
+            st.info("برای این صندوق داده NAV کافی برای رسم نمودار وجود ندارد.")
+    else:
+        st.info("برای شبیه‌سازی رشد سرمایه، فایل NAV پاک‌سازی‌شده لازم است.")
 
 with tabs[3]:
     st.subheader("پرسش‌نامه سنجش ریسک‌پذیری")
