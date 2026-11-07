@@ -20,7 +20,11 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
-      - run: pip install -e . pyarrow
+      - run: pip install -e . pyarrow pytest
+      - name: Run project tests
+        run: python -m pytest
+      - name: Validate static dashboard JavaScript
+        run: node --check site/app.js
       - name: Run data pipeline
         env:
           TIGZIG_REQUEST_DELAY: "21"
