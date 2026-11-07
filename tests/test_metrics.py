@@ -11,6 +11,9 @@ def test_metrics_calculate_expected_values():
     })
     row = calculate_fund_metrics(nav, risk_free_rate=0.0).iloc[0]
     assert np.isclose(row["total_return"], 0.06)
+    assert np.isclose(row["best_daily_return"], 3 / 101)
+    assert np.isclose(row["worst_daily_return"], -1 / 102)
+    assert np.isfinite(row["annualized_return_to_volatility"])
     assert np.isfinite(row["volatility"])
     assert np.isfinite(row["sortino_ratio"])
     assert row["max_drawdown"] < 0
