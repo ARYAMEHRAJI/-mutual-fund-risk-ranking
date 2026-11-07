@@ -41,3 +41,11 @@ def test_pdf_report_is_created():
     })
     pdf = make_pdf_report(data, "Growth", "2026-11-07")
     assert pdf.startswith(b"%PDF")
+
+
+def test_dashboard_script_has_valid_python_syntax():
+    import ast
+    from pathlib import Path
+
+    dashboard = Path(__file__).resolve().parents[1] / "app" / "dashboard.py"
+    ast.parse(dashboard.read_text(encoding="utf-8"))
