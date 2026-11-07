@@ -65,7 +65,8 @@ def resolve_benchmark(row):
     return None, None
 
 
-def add_benchmark_metrics(metrics, metadata, levels_path="data/benchmarks/index_levels.csv",
+def add_benchmark_metrics(metrics, metadata, nav_returns=None,
+                          levels_path="data/benchmarks/index_levels.csv",
                           risk_free_rate=RISK_FREE_RATE):
     meta_cols = [c for c in ("scheme_code", "scheme_name", "category_sub", "category_group_clean")
                  if c in metadata.columns]
@@ -96,9 +97,8 @@ def add_benchmark_metrics(metrics, metadata, levels_path="data/benchmarks/index_
     levels = levels.loc[levels["index_value"] > 0].sort_values(["benchmark_id", "date"])
     levels["benchmark_return"] = levels.groupby("benchmark_id")["index_value"].pct_change()
 
-    nav_returns = metrics.attrs.get("daily_returns")
-    # Daily fund returns are reconstructed from the cleaned NAV data by caller
-    # and supplied via the optional private column-free frame below.
+    # Daily fund returns are supplied separately to avoid storing a DataFrame
+    # inside pandas attrs (which can break equality checks during merge).
     if nav_returns is None:
         result.loc[result["benchmark_id"].notna(), "benchmark_status"] = "benchmark_history_loaded_fund_returns_unavailable"
         return result
