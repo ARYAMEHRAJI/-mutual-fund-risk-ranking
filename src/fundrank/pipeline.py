@@ -16,10 +16,7 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     client = TigzigClient()
     metadata = client.latest_funds()
 
-    # Preserve the complete provider metadata before applying today's active-
-    # fund, plan, option, history, and freshness filters. These dated snapshots
-    # build a point-in-time universe for future evaluations; they cannot
-    # reconstruct historical metadata from before snapshot collection began.
+    # Save the complete provider universe before today's eligibility filters.
     snapshot_dir = Path("metadata_snapshots")
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     snapshot_path = snapshot_dir / f"{as_of_date:%Y-%m-%d}.json"
@@ -67,6 +64,21 @@ def run_pipeline(output_dir="data/processed", refresh=True):
     ranked.to_csv(output / "fund_rankings.csv", index=False)
     ranked.to_parquet(output / "fund_rankings.parquet", index=False)
 
+    # Keep a small dated copy of ranks so the dashboard can plot future changes.
+    history_dir = Path("ranking_snapshots")
+    history_dir.mkdir(parents=True, exist_ok=True)
+    history_columns = [
+        column for column in [
+            "scheme_code", "scheme_name", "ranking_group",
+            "rank_conservative", "rank_moderate", "rank_growth", "rank_aggressive",
+            "composite_conservative", "composite_moderate",
+            "composite_growth", "composite_aggressive",
+        ] if column in ranked.columns
+    ]
+    history_path = history_dir / f"{as_of_date:%Y-%m-%d}.csv"
+    ranked[history_columns].to_csv(history_path, index=False)
+    print(f"Saved ranking history snapshot: {history_path}")
+
     evaluation = evaluate_rankings(ranked)
     evaluation.to_csv(output / "ranking_evaluation.csv", index=False)
     sensitivity = [
@@ -77,8 +89,7 @@ def run_pipeline(output_dir="data/processed", refresh=True):
         output / "weight_sensitivity.csv", index=False
     )
 
-    # Pass validated raw NAV so each historical formation date can be
-    # cleaned independently without seeing observations from its future.
+    # Each historical formation date is cleaned without seeing its future.
     out_of_sample = evaluate_out_of_sample(
         nav, eligible_meta, as_of_date=as_of_date,
         horizon_months=12, windows=3,
