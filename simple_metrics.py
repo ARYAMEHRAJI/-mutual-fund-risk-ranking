@@ -327,9 +327,16 @@ def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3
 
             پاسخ = requests.get(
                 آدرس_پایه + کد_متنی,
-                headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"},
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36",
+                    "Referer": "https://charliealpha.in/",
+                    "Origin": "https://charliealpha.in"
+                },
                 timeout=25
             )
+            if پاسخ.status_code == 403:
+                raise RuntimeError("403 از سرویس آلفا/بتا: " + پاسخ.text[:180])
             پاسخ.raise_for_status()
             داده = پاسخ.json()
 
@@ -372,7 +379,7 @@ def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3
     کدهای_یکتا = list(dict.fromkeys(str(کد).strip().removesuffix(".0") for کد in کد_صندوق_ها))
     ردیف_ها = []
     # حداکثر ۶ درخواست هم زمان؛ کمتر از سقف اعلام شده سرویس (۵۰ درخواست در ۱۰ ثانیه).
-    with ThreadPoolExecutor(max_workers=6) as اجراکننده:
+    with ThreadPoolExecutor(max_workers=3) as اجراکننده:
         کارها = [اجراکننده.submit(دریافت_یک_صندوق, کد) for کد in کدهای_یکتا]
         for کار in as_completed(کارها):
             ردیف_ها.append(کار.result())
