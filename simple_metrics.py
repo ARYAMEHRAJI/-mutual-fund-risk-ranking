@@ -4,6 +4,7 @@ import json
 import requests
 import numpy as np
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def بازدهی_در_بازه(جدول, تعداد_روز):
@@ -310,3 +311,70 @@ def محاسبه_آلفا_بتا(اطلاعات_nav, اطلاعات_شاخص):
         نتیجه,
         columns=["scheme_code", "beta", "alpha", "common_days"]
     )
+
+
+
+def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3Y"):
+    # آلفا و بتا را از API عمومی Charlie Alpha دریافت می کنیم.
+    # این سرویس شاخص مرجع هر صندوق را خودش تشخیص می دهد.
+    آدرس_پایه = "https://api.charliealpha.in/v1/mf/metrics/"
+
+    def دریافت_یک_صندوق(کد):
+        کد_متنی = str(کد).strip()
+        try:
+            if کد_متنی.endswith(".0"):
+                کد_متنی = کد_متنی[:-2]
+
+            پاسخ = requests.get(
+                آدرس_پایه + کد_متنی,
+                headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"},
+                timeout=25
+            )
+            پاسخ.raise_for_status()
+            داده = پاسخ.json()
+
+            شاخص_ها = داده.get("metrics", {}).get(افق, {})
+            آلفا = شاخص_ها.get("alpha")
+            بتا = شاخص_ها.get("beta")
+            شمارش = (
+                داده.get("sample_counts", {})
+                .get("metrics", {})
+                .get(افق, {})
+                .get("alpha")
+            )
+
+            # آلفای API به صورت درصد سالانه است؛ در پروژه به شکل اعشاری ذخیره می شود.
+            آلفا = float(آلفا) / 100 if آلفا is not None else np.nan
+            بتا = float(بتا) if بتا is not None else np.nan
+
+            return {
+                "scheme_code": کد_متنی,
+                "alpha": آلفا,
+                "beta": بتا,
+                "alpha_beta_sample_count": شمارش,
+                "alpha_beta_benchmark": داده.get("benchmark", ""),
+                "alpha_beta_as_of": داده.get("data_as_of", ""),
+                "alpha_beta_source": "Charlie Alpha API",
+                "alpha_beta_error": ""
+            }
+        except Exception as خطا:
+            return {
+                "scheme_code": کد_متنی,
+                "alpha": np.nan,
+                "beta": np.nan,
+                "alpha_beta_sample_count": 0,
+                "alpha_beta_benchmark": "",
+                "alpha_beta_as_of": "",
+                "alpha_beta_source": "Charlie Alpha API",
+                "alpha_beta_error": str(خطا)[:220]
+            }
+
+    کدهای_یکتا = list(dict.fromkeys(str(کد).strip().removesuffix(".0") for کد in کد_صندوق_ها))
+    ردیف_ها = []
+    # حداکثر ۶ درخواست هم زمان؛ کمتر از سقف اعلام شده سرویس (۵۰ درخواست در ۱۰ ثانیه).
+    with ThreadPoolExecutor(max_workers=6) as اجراکننده:
+        کارها = [اجراکننده.submit(دریافت_یک_صندوق, کد) for کد in کدهای_یکتا]
+        for کار in as_completed(کارها):
+            ردیف_ها.append(کار.result())
+
+    return pd.DataFrame(ردیف_ها)
