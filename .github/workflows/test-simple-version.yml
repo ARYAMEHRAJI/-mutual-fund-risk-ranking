@@ -1,0 +1,86 @@
+name: Run simple project live test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [simple-version]
+    paths:
+      - "simple_*.py"
+      - "requirements-simple.txt"
+      - ".github/workflows/test-simple-version.yml"
+
+jobs:
+  live-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install required libraries
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-simple.txt
+
+      - name: Check Python files
+        run: python -m py_compile simple_data.py simple_metrics.py simple_ranking.py simple_app.py
+
+      - name: Run a live data and ranking test
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python - <<'PY'
+          from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
+          from simple_metrics import محاسبه_شاخص_ها, دریافت_شاخص_بازار, محاسبه_آلفا_بتا
+          from simple_ranking import رتبه_بندی
+
+          print("1) دریافت فهرست صندوق ها...")
+          همه = دریافت_صندوق_ها()
+          print("تعداد کل صندوق های دریافتی:", len(همه))
+
+          print("2) انتخاب صندوق های Large Cap...")
+          انتخابی = انتخاب_صندوق_ها(همه, "Large Cap").head(5)
+          if انتخابی.empty:
+              raise RuntimeError("هیچ صندوق Large Cap واجد شرایطی پیدا نشد.")
+          print("تعداد صندوق های انتخاب شده:", len(انتخابی))
+
+          print("3) دریافت NAV...")
+          nav = دریافت_nav(انتخابی["scheme_code"].tolist())
+          if nav.empty:
+              raise RuntimeError("داده NAV خالی است.")
+          print("تعداد ردیف های NAV:", len(nav))
+
+          print("4) محاسبه بازدهی و ریسک...")
+          metrics = محاسبه_شاخص_ها(nav)
+          if metrics.empty:
+              raise RuntimeError("شاخص های صندوق محاسبه نشدند.")
+
+          print("5) دریافت شاخص مرجع NIFTY 50 TRI...")
+          benchmark = دریافت_شاخص_بازار("NIFTY 50", nav["date"].min(), nav["date"].max())
+          if benchmark.empty:
+              raise RuntimeError("داده شاخص مرجع خالی است.")
+
+          print("6) محاسبه آلفا و بتا...")
+          alpha_beta = محاسبه_آلفا_بتا(nav, benchmark)
+          print("تعداد صندوق های دارای آلفا و بتا:", len(alpha_beta))
+          result = metrics.merge(alpha_beta, on="scheme_code", how="left")
+
+          print("7) رتبه بندی چهار پروفایل...")
+          ranked = رتبه_بندی(result)
+          if ranked.empty:
+              raise RuntimeError("جدول رتبه بندی خالی است.")
+          required = ["Conservative_rank", "Moderate_rank", "Growth_rank", "Aggressive_rank"]
+          missing = [column for column in required if column not in ranked.columns]
+          if missing:
+              raise RuntimeError("ستون های رتبه بندی وجود ندارند: " + str(missing))
+
+          print("آزمون موفق بود. نمونه خروجی:")
+          print(ranked[["scheme_name", "return_1y", "volatility", "max_drawdown",
+                        "alpha", "beta", "Conservative_rank", "Moderate_rank",
+                        "Growth_rank", "Aggressive_rank"]].to_string(index=False))
+          PY
