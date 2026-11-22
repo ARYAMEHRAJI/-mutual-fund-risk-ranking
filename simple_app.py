@@ -345,7 +345,7 @@ if st.session_state.get("نمایش_نتیجه", False):
             x=داده[ستون],
             y=داده["scheme_name"],
             orientation="h",
-            marker=dict(color=رنگ‌ها[-len(داده):], line=dict(width=0), cornerradius=7),
+            marker=dict(color=رنگ‌ها[-len(داده):], line=dict(width=0)),
             text=[("{:,.2f}".format(x) + پسوند) for x in اعداد],
             textposition="outside",
             cliponaxis=False,
@@ -401,7 +401,7 @@ if st.session_state.get("نمایش_نتیجه", False):
     with تب_بازار:
         نوع_منبع = "شاخص مرجع رسمی Nifty TRI"
         منابع = st.session_state.get("منابع_شاخص", [])
-        if any("Price Index Proxy" in str(x.get("type", "")) for x in منابع):
+        if any("proxy" in str(x.get("type", "")).lower() for x in منابع):
             نوع_منبع = "شاخص قیمت جایگزین از Yahoo Finance (نه TRI رسمی)"
             st.info("به دلیل محدودیت دسترسی به Nifty در سرور ابری، در برخی گروه‌ها از سری شاخص قیمت Yahoo Finance استفاده شده است. آلفا در این حالت آلفای تقریبی نسبت به شاخص قیمت است و با آلفای مبتنی بر TRI یکسان نیست.")
         else:
