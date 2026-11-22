@@ -269,6 +269,8 @@ if st.session_state.get("شروع_تحلیل", False):
                     )
                 }]
                 تعداد_تحلیل_شده = int(شاخص_ها["scheme_code"].nunique())
+                تعداد_آلفا_کل = int(شاخص_ها["alpha"].notna().sum())
+                تعداد_بتا_کل = int(شاخص_ها["beta"].notna().sum())
                 تعداد_واجد_شرایط = int(صندوق_های_واجد_شرایط["scheme_code"].nunique())
 
                 نتیجه = رتبه_بندی(شاخص_ها)
@@ -281,6 +283,8 @@ if st.session_state.get("شروع_تحلیل", False):
                 st.session_state["تعداد_واجد_شرایط"] = تعداد_واجد_شرایط
                 st.session_state["تعداد_بررسی_شده"] = تعداد_تحلیل_شده
                 st.session_state["تعداد_دارای_nav"] = تعداد_دارای_nav
+                st.session_state["تعداد_آلفا_کل"] = تعداد_آلفا_کل
+                st.session_state["تعداد_بتا_کل"] = تعداد_بتا_کل
                 st.session_state["نمایش_نتیجه"] = True
         except Exception as خطا:
             st.error("در تحلیل داده‌ها مشکلی پیش آمد: " + str(خطا))
