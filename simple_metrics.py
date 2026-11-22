@@ -1,5 +1,7 @@
 # این فایل شاخص های بازدهی و ریسک را حساب می کند.
 
+import json
+import requests
 import numpy as np
 import pandas as pd
 
@@ -73,6 +75,53 @@ def محاسبه_شاخص_ها(اطلاعات_nav):
         })
 
     return pd.DataFrame(نتیجه)
+
+
+def دریافت_شاخص_بازار(نام_شاخص, تاریخ_شروع, تاریخ_پایان):
+    # اطلاعات شاخص کل بازدهی را از سایت رسمی Nifty Indices می گیریم
+    آدرس = "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString"
+
+    # تاریخ ها را به شکل مورد قبول سایت تبدیل می کنیم
+    شروع = pd.Timestamp(تاریخ_شروع).strftime("%d-%b-%Y")
+    پایان = pd.Timestamp(تاریخ_پایان).strftime("%d-%b-%Y")
+
+    # سایت این اطلاعات را در قالب یک متن خاص دریافت می کند
+    اطلاعات_درخواست = {
+        "cinfo": "{'name':'" + نام_شاخص + "','startDate':'" + شروع
+        + "','endDate':'" + پایان + "','indexName':'" + نام_شاخص + "'}"
+    }
+
+    # این سربرگ ها باعث می شوند درخواست شبیه مرورگر عادی باشد
+    سربرگ = {
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://www.niftyindices.com/reports/historical-data",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
+    }
+
+    پاسخ = requests.post(
+        آدرس,
+        headers=سربرگ,
+        data=json.dumps(اطلاعات_درخواست),
+        timeout=60
+    )
+    پاسخ.raise_for_status()
+
+    # پاسخ سایت دوبار به JSON تبدیل می شود
+    ردیف_ها = json.loads(پاسخ.json()["d"])
+    شاخص = pd.DataFrame(ردیف_ها)
+
+    if شاخص.empty:
+        raise ValueError("اطلاعات شاخص انتخاب شده از سایت دریافت نشد.")
+
+    # فقط تاریخ و مقدار شاخص را نگه می داریم
+    شاخص = شاخص[["Date", "TotalReturnsIndex"]].copy()
+    شاخص.columns = ["date", "close"]
+    شاخص["date"] = pd.to_datetime(شاخص["date"], format="%d %b %Y")
+    شاخص["close"] = pd.to_numeric(شاخص["close"], errors="coerce")
+    شاخص = شاخص.dropna().sort_values("date")
+
+    return شاخص
 
 
 def محاسبه_آلفا_بتا(اطلاعات_nav, اطلاعات_شاخص):
