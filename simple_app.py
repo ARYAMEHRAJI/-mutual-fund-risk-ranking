@@ -1,4 +1,5 @@
 # داشبورد فارسی پیشنهاد صندوق بر اساس میزان ریسک پذیری کاربر
+# آلفا و بتا از سرویس Charlie Alpha دریافت می شوند.
 
 import streamlit as st
 import pandas as pd
