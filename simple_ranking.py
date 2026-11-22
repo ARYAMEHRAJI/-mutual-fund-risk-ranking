@@ -5,7 +5,7 @@ import pandas as pd
 
 def تبدیل_به_امتیاز(جدول, ستون, بیشتر_بهتر=True):
     # هر صندوق را با صندوق های هم گروه خودش مقایسه می کنیم
-    رتبه = جدول[ستون].rank(pct=True, ascending=not بیشتر_بهتر)
+    رتبه = جدول[ستون].rank(pct=True, ascending=بیشتر_بهتر)
     return رتبه * 100
 
 
