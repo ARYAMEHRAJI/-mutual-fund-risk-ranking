@@ -1,0 +1,5 @@
+# کتابخانه های لازم برای اجرای نسخه ساده
+pandas
+numpy
+requests
+streamlit
