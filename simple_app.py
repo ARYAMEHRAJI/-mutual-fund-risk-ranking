@@ -369,11 +369,14 @@ if st.session_state.get("نمایش_نتیجه", False):
                 showgrid=False
             )
         )
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown("**" + عنوان + "**")
-        st.caption(توضیح)
-        st.plotly_chart(شکل, use_container_width=True, config={"displayModeBar": False})
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("**" + عنوان + "**")
+            st.caption(توضیح)
+            st.plotly_chart(
+                شکل,
+                use_container_width=True,
+                config={"displayModeBar": False}
+            )
 
     تب_بازدهی, تب_ریسک, تب_کیفیت, تب_بازار = st.tabs(["بازدهی", "ریسک", "کیفیت عملکرد", "آلفا و بتا"])
     with تب_بازدهی:
