@@ -38,7 +38,7 @@ streamlit run simple_app.py
 - date: تاریخ روزانه
 - close: مقدار شاخص در همان روز
 
-بهتر است مقدار شاخص از نوع Total Return Index یا TRI باشد تا سود نقدی هم در بازدهی شاخص حساب شود. شاخص باید با گروه صندوق هماهنگ باشد: Nifty 50 TRI برای Large Cap، Nifty Midcap 150 TRI برای Mid Cap و Nifty Smallcap 250 TRI برای Small Cap.
+بهتر است مقدار شاخص از نوع Total Return Index یا TRI باشد تا سود نقدی هم در بازدهی شاخص حساب شود. شاخص باید با گروه صندوق هماهنگ باشد: Nifty 50 TRI برای Large Cap، Nifty Midcap 150 TRI برای Mid Cap، Nifty Smallcap 250 TRI برای Small Cap و Nifty 500 TRI برای Flexi Cap، Multi Cap و Focused.
 
 در صورت نبود فایل شاخص، بقیه شاخص ها محاسبه می شوند و خانه آلفا و بتا خالی می ماند.
 
