@@ -74,7 +74,7 @@ def محاسبه_شاخص_ها(اطلاعات_nav):
             "sortino": سورتینو
         })
 
-    return pd.DataFrame(نتیجه)
+    return pd.DataFrame(نتیجه, columns=["scheme_code", "scheme_name", "return_1w", "return_1m", "return_3m", "return_6m", "return_1y", "return_3y", "volatility", "max_drawdown", "sharpe", "sortino"])
 
 
 def دریافت_شاخص_بازار(نام_شاخص, تاریخ_شروع, تاریخ_پایان):
@@ -171,4 +171,4 @@ def محاسبه_آلفا_بتا(اطلاعات_nav, اطلاعات_شاخص):
             "alpha": آلفای_سالانه
         })
 
-    return pd.DataFrame(نتیجه)
+    return pd.DataFrame(نتیجه, columns=["scheme_code", "beta", "alpha"])
