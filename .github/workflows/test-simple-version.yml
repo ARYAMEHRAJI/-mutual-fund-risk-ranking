@@ -1,5 +1,7 @@
 name: Run simple project live test
 
+# این گردش کار با هر تغییر در نسخه ساده یا با اجرای دستی شروع می شود.
+
 on:
   workflow_dispatch:
   push:
