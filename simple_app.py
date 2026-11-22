@@ -173,12 +173,12 @@ if st.session_state.get("شروع_تحلیل", False):
             else:
                 # برای هر گروه، شاخص مرجع مناسب را مشخص می کنیم
                 شاخص_مرجع = {
-                    "Large Cap": "NIFTY 50 TRI",
-                    "Mid Cap": "NIFTY MIDCAP 150 TRI",
-                    "Small Cap": "NIFTY SMALLCAP 250 TRI",
-                    "Flexi Cap": "NIFTY 500 TRI",
-                    "Multi Cap": "NIFTY 500 TRI",
-                    "Focused": "NIFTY 500 TRI"
+                    "Large Cap": "NIFTY 50",
+                    "Mid Cap": "NIFTY MIDCAP 150",
+                    "Small Cap": "NIFTY SMALLCAP 250",
+                    "Flexi Cap": "NIFTY 500",
+                    "Multi Cap": "NIFTY 500",
+                    "Focused": "NIFTY 500"
                 }
                 صندوق_های_انتخابی["benchmark"] = ""
                 for گروه in گروه_ها:
@@ -220,12 +220,16 @@ if st.session_state.get("شروع_تحلیل", False):
                         جدول_آلفا_بتا = pd.concat(
                             نتیجه_آلفا_بتا, ignore_index=True
                         ).drop_duplicates(subset=["scheme_code"])
+                        # نوع کد صندوق در هر دو جدول باید یکسان باشد
+                        شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str)
+                        جدول_آلفا_بتا["scheme_code"] = جدول_آلفا_بتا["scheme_code"].astype(str)
                         شاخص_ها = شاخص_ها.merge(
                             جدول_آلفا_بتا, on="scheme_code", how="left"
                         )
                     else:
                         شاخص_ها["alpha"] = float("nan")
                         شاخص_ها["beta"] = float("nan")
+                        شاخص_ها["common_days"] = 0
 
                     نتیجه = رتبه_بندی(شاخص_ها)
                     st.session_state["خطاهای_آلفا_بتا"] = خطاهای_آلفا_بتا
@@ -277,6 +281,18 @@ if st.session_state.get("نمایش_نتیجه", False):
                 + str(round(ردیف[st.session_state["پروفایل"] + "_score"], 1))
                 + " از ۱۰۰"
             )
+
+    # گزارش وضعیت دریافت و محاسبه آلفا و بتا
+    if "alpha" in نتیجه.columns and "beta" in نتیجه.columns:
+        تعداد_موفق = int((نتیجه["alpha"].notna() & نتیجه["beta"].notna()).sum())
+        st.caption("صندوق های دارای آلفا و بتای قابل محاسبه: " + str(تعداد_موفق) + " از " + str(len(نتیجه)))
+        if تعداد_موفق == 0:
+            st.warning(
+                "آلفا و بتا هنوز قابل محاسبه نیستند. احتمالاً داده شاخص بازار دریافت نشده "
+                "یا روزهای مشترک کافی بین تاریخ های صندوق و شاخص وجود ندارد."
+            )
+    for پیام_خطا in st.session_state.get("خطاهای_آلفا_بتا", []):
+        st.caption("جزئیات دریافت شاخص: " + پیام_خطا)
 
     st.divider()
     st.subheader("مقایسه پنج صندوق پیشنهادی")
