@@ -291,6 +291,17 @@ if st.session_state.get("نمایش_نتیجه", False):
                 "آلفا و بتا هنوز قابل محاسبه نیستند. احتمالاً داده شاخص بازار دریافت نشده "
                 "یا روزهای مشترک کافی بین تاریخ های صندوق و شاخص وجود ندارد."
             )
+        if "common_days" in نتیجه.columns:
+            وضعیت_روزها = نتیجه[["scheme_name", "common_days"]].copy()
+            وضعیت_روزها["common_days"] = pd.to_numeric(
+                وضعیت_روزها["common_days"], errors="coerce"
+            ).fillna(0).astype(int)
+            for _, ردیف_روز in وضعیت_روزها.iterrows():
+                st.caption(
+                    str(ردیف_روز["scheme_name"]) + " — "
+                    + str(ردیف_روز["common_days"])
+                    + " روز مشترک (حداقل لازم: ۳۰ روز)"
+                )
     for پیام_خطا in st.session_state.get("خطاهای_آلفا_بتا", []):
         st.caption("جزئیات دریافت شاخص: " + پیام_خطا)
 
