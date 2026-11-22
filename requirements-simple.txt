@@ -5,3 +5,5 @@ requests
 streamlit
 cloudscraper
 altair
+
+plotly
