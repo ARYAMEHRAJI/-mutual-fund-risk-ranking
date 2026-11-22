@@ -77,6 +77,8 @@ jobs:
           تعداد_بتا = int(result["beta"].notna().sum())
           print("صندوق های دارای آلفا:", تعداد_آلفا)
           print("صندوق های دارای بتا:", تعداد_بتا)
+          print("کدها و خطاهای API:")
+          print(alpha_beta[["scheme_code", "alpha_beta_error"]].to_string(index=False))
           if تعداد_آلفا == 0 or تعداد_بتا == 0:
               raise RuntimeError("API آلفا و بتا برای هیچ کدام از صندوق های آزمون داده برنگرداند.")
 
