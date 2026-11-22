@@ -38,12 +38,14 @@ jobs:
         run: |
           python - <<'PY'
           from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
-          from simple_metrics import محاسبه_شاخص_ها, دریافت_شاخص_بازار, محاسبه_آلفا_بتا
+          from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
           from simple_ranking import رتبه_بندی
 
           print("1) دریافت فهرست صندوق ها...")
           همه = دریافت_صندوق_ها()
-          print("تعداد کل صندوق های دریافتی:", len(همه))
+          if همه.empty:
+              raise RuntimeError("فهرست صندوق ها خالی است.")
+          print("تعداد کل صندوق های دریافتی:", همه["scheme_code"].nunique())
 
           print("2) انتخاب صندوق های Large Cap...")
           انتخابی = انتخاب_صندوق_ها(همه, "Large Cap").head(5)
@@ -55,31 +57,30 @@ jobs:
           nav = دریافت_nav(انتخابی["scheme_code"].tolist())
           if nav.empty:
               raise RuntimeError("داده NAV خالی است.")
-          print("تعداد ردیف های NAV:", len(nav))
+          print("تعداد صندوق های دارای NAV:", nav["scheme_code"].nunique())
 
           print("4) محاسبه بازدهی و ریسک...")
           metrics = محاسبه_شاخص_ها(nav)
           if metrics.empty:
               raise RuntimeError("شاخص های صندوق محاسبه نشدند.")
 
-          print("5) تلاش برای دریافت شاخص مرجع NIFTY 50 TRI...")
-          try:
-              benchmark = دریافت_شاخص_بازار("NIFTY 50", nav["date"].min(), nav["date"].max())
-              if benchmark.empty:
-                  raise RuntimeError("داده شاخص مرجع خالی است.")
-              print("تعداد ردیف های شاخص مرجع:", len(benchmark))
-              print("6) محاسبه آلفا و بتا...")
-              alpha_beta = محاسبه_آلفا_بتا(nav, benchmark)
-              print("تعداد صندوق های دارای آلفا و بتا:", len(alpha_beta))
-              result = metrics.merge(alpha_beta, on="scheme_code", how="left")
-          except Exception as error:
-              print("هشدار: منبع TRI در محیط GitHub در دسترس نیست:", error)
-              print("رتبه بندی را بدون آلفا و بتا ادامه می دهیم؛ این دو مقدار خالی می مانند.")
-              result = metrics.copy()
-              result["alpha"] = float("nan")
-              result["beta"] = float("nan")
+          print("5) دریافت آلفا و بتا از Charlie Alpha API...")
+          alpha_beta = دریافت_آلفا_بتا_از_سرویس(
+              metrics["scheme_code"].astype(str).tolist(),
+              افق="3Y"
+          )
+          result = metrics.copy()
+          result["scheme_code"] = result["scheme_code"].astype(str)
+          alpha_beta["scheme_code"] = alpha_beta["scheme_code"].astype(str)
+          result = result.merge(alpha_beta, on="scheme_code", how="left")
+          تعداد_آلفا = int(result["alpha"].notna().sum())
+          تعداد_بتا = int(result["beta"].notna().sum())
+          print("صندوق های دارای آلفا:", تعداد_آلفا)
+          print("صندوق های دارای بتا:", تعداد_بتا)
+          if تعداد_آلفا == 0 or تعداد_بتا == 0:
+              raise RuntimeError("API آلفا و بتا برای هیچ کدام از صندوق های آزمون داده برنگرداند.")
 
-          print("7) رتبه بندی چهار پروفایل...")
+          print("6) رتبه بندی چهار پروفایل...")
           ranked = رتبه_بندی(result)
           if ranked.empty:
               raise RuntimeError("جدول رتبه بندی خالی است.")
