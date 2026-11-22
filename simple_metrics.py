@@ -122,15 +122,26 @@ def دریافت_شاخص_بازار(نام_شاخص, تاریخ_شروع, تا�
             + پاسخ.text[:180]
         )
 
-    # پاسخ API ممکن است به شکل فهرست یا دیکشنری برگردد.
+    # پاسخ این API به شکل دیکشنری تاریخ -> نماد -> قیمت برمی گردد.
+    if isinstance(داده, dict) and "error" in داده:
+        raise ValueError("خطای منبع جایگزین: " + str(داده["error"]))
+
+    if isinstance(داده, dict) and "data" in داده:
+        داده = داده["data"]
+
+    ردیف_ها = []
     if isinstance(داده, dict):
-        ردیف_ها = داده.get("data", داده.get("results", داده.get("prices", [])))
-        if isinstance(ردیف_ها, dict):
-            ردیف_ها = ردیف_ها.get(نماد, [])
-    else:
+        for تاریخ, قیمت_ها in داده.items():
+            if isinstance(قیمت_ها, dict):
+                قیمت = قیمت_ها.get(نماد)
+                if قیمت is not None:
+                    ردیف_ها.append({"date": تاریخ, "adj_close": قیمت})
+            elif isinstance(قیمت_ها, (int, float, str)):
+                ردیف_ها.append({"date": تاریخ, "adj_close": قیمت_ها})
+    elif isinstance(داده, list):
         ردیف_ها = داده
 
-    if not isinstance(ردیف_ها, list) or not ردیف_ها:
+    if not ردیف_ها:
         raise ValueError(
             "منبع جایگزین برای نماد " + نماد + " داده ای برنگرداند. "
             + "خطای Nifty: " + str(خطای_منبع_رسمی)[:180]
