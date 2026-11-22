@@ -194,6 +194,9 @@ if st.session_state.get("شروع_تحلیل", False):
                 st.session_state["نام_شاخص_ها"] = نام_شاخص_ها
                 st.session_state["نمایش_نتیجه"] = True
 
+        except Exception as خطا:
+            st.error("هنگام دریافت یا تحلیل اطلاعات مشکلی پیش آمد: " + str(خطا))
+
 if st.session_state.get("نمایش_نتیجه", False):
     نتیجه = st.session_state["نتیجه_صندوق"]
     نام_شاخص_ها = st.session_state["نام_شاخص_ها"]
