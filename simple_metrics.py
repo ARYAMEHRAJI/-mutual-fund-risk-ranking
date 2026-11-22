@@ -110,7 +110,7 @@ def دریافت_شاخص_بازار(نام_شاخص, تاریخ_شروع, تا�
         آدرس,
         params=پارامترها,
         headers={"User-Agent": "Mozilla/5.0"},
-        timeout=45
+        timeout=30
     )
     پاسخ.raise_for_status()
 
@@ -173,8 +173,14 @@ def دریافت_شاخص_بازار(نام_شاخص, تاریخ_شروع, تا�
         raise ValueError("داده های منبع جایگزین پس از پاک سازی خالی شدند.")
 
     # این داده شاخص قیمتِ بازار است، نه TRI رسمی؛ در داشبورد شفاف اعلام می شود.
-    شاخص["source"] = "Tigzig / Yahoo Finance - adjusted close"
-    شاخص["benchmark_type"] = "Price Index Proxy (نه TRI رسمی)"
+    شاخص["source"] = "Tigzig Yahoo Finance API (adjusted close)"
+    if نام_شاخص == "NIFTY MIDCAP 150":
+        نوع_جایگزین = "NIFTY MIDCAP 100 proxy؛ نه شاخص دقیق Midcap 150 و نه TRI رسمی"
+    elif نام_شاخص == "NIFTY SMALLCAP 250":
+        نوع_جایگزین = "NIFTY 500 proxy؛ نه شاخص دقیق Smallcap 250 و نه TRI رسمی"
+    else:
+        نوع_جایگزین = "Yahoo adjusted-close price proxy؛ نه TRI رسمی"
+    شاخص["benchmark_type"] = نوع_جایگزین
     شاخص["ticker"] = نماد
     return شاخص
 
