@@ -319,7 +319,7 @@ if st.session_state.get("نمایش_نتیجه", False):
         )
 
     if تعداد_دارای_آلفا == 0 or تعداد_دارای_بتا == 0:
-        st.warning("برای بخشی از صندوق‌ها آلفا یا بتا محاسبه نشده است. جزئیات منبع و تعداد روزهای مشترک را در بخش «اطلاعات داده‌ها» ببینید.")
+        st.warning("برای بخشی از صندوق‌ها آلفا یا بتا از سرویس دریافت نشده است. جزئیات خطا و منبع را در بخش «اطلاعات داده‌ها» ببینید.")
 
     st.markdown("---")
     st.markdown('<div class="section-title">مقایسه عملکرد صندوق‌ها</div>', unsafe_allow_html=True)
@@ -419,24 +419,34 @@ if st.session_state.get("نمایش_نتیجه", False):
             mime="text/csv"
         )
     with تب_منابع:
-        st.markdown("**منابع شاخص بازار**")
-        if st.session_state.get("منابع_شاخص"):
-            st.dataframe(pd.DataFrame(st.session_state["منابع_شاخص"]), use_container_width=True, hide_index=True)
-        else:
-            st.info("اطلاعات منبع شاخص در دسترس نیست.")
-        if "common_days" in نتیجه.columns:
-            st.markdown("**تعداد روزهای مشترک برای محاسبه آلفا و بتا**")
-            st.dataframe(
-                نتیجه[["scheme_name", "common_days"]].rename(
-                    columns={"scheme_name": "نام صندوق", "common_days": "روز مشترک"}
-                ),
-                use_container_width=True, hide_index=True
+        st.markdown("**منبع آلفا و بتا**")
+        st.write("Charlie Alpha API — محاسبه سه‌ساله با شاخص مرجع مرتبط با هر صندوق.")
+        st.markdown("[مشاهده مستندات و API منبع](https://api.charliealpha.in/)")
+        تاریخ_داده = (
+            نتیجه["alpha_beta_as_of"].dropna().iloc[0]
+            if "alpha_beta_as_of" in نتیجه.columns and not نتیجه["alpha_beta_as_of"].dropna().empty
+            else "در دسترس نیست"
+        )
+        st.write("تاریخ داده آلفا و بتا: " + str(تاریخ_داده))
+        if "alpha_beta_benchmark" in نتیجه.columns:
+            جدول_منبع = نتیجه[[
+                "scheme_name", "alpha_beta_benchmark", "alpha", "beta"
+            ]].copy()
+            جدول_منبع = جدول_منبع.rename(columns={
+                "scheme_name": "نام صندوق",
+                "alpha_beta_benchmark": "شاخص مرجع",
+                "alpha": "آلفای سالانه سه‌ساله (درصد)",
+                "beta": "بتای سه‌ساله"
+            })
+            جدول_منبع["آلفای سالانه سه‌ساله (درصد)"] = (
+                جدول_منبع["آلفای سالانه سه‌ساله (درصد)"] * 100
             )
+            st.dataframe(جدول_منبع, use_container_width=True, hide_index=True)
         for خطا in st.session_state.get("خطاهای_آلفا_بتا", []):
-            st.warning(خطا)
+            st.warning("دریافت آلفا/بتا برای یک صندوق ناموفق بود: " + خطا)
 
 st.markdown("---")
 st.markdown(
-    '<div class="small-note">این سامانه یک پروژه آموزشی برای مقایسه صندوق‌های سرمایه‌گذاری است و توصیه خرید یا فروش محسوب نمی‌شود. داده‌های صندوق و شاخص از سرویس‌های عمومی شخص ثالث دریافت می‌شوند.</div>',
+    '<div class="small-note">این سامانه یک پروژه آموزشی برای مقایسه صندوق‌های سرمایه‌گذاری است و توصیه خرید یا فروش محسوب نمی‌شود. داده‌های صندوق از Tigzig و آلفا و بتا از Charlie Alpha API دریافت می‌شوند.</div>',
     unsafe_allow_html=True
 )
