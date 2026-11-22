@@ -5,9 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
-from simple_metrics import (
-    محاسبه_شاخص_ها, دریافت_شاخص_بازار, محاسبه_آلفا_بتا
-)
+from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
 from simple_ranking import رتبه_بندی
 
 st.set_page_config(
@@ -220,7 +218,16 @@ if st.session_state.get("شروع_تحلیل", False):
                 if صندوق_های_انتخابی.empty:
                     raise RuntimeError("صندوق واجد شرایطی در داده دریافتی پیدا نشد.")
 
-                شاخص_مرجع = {
+                # شمارش کل فهرست و صندوق های واجد شرایط در شش گروه
+                تعداد_کل_دریافتی = int(همه_صندوق_ها["scheme_code"].nunique())
+                صندوق_های_واجد_شرایط = pd.concat(
+                    [انتخاب_صندوق_ها(همه_صندوق_ها, گروه) for گروه in گروه_ها],
+                    ignore_index=True
+                ).drop_duplicates("scheme_code")
+
+                # برای کنترل زمان دریافت NAV، پنج صندوق از هر گروه وارد بررسی عمیق می شوند.
+                صندوق_های_انتخابی["benchmark"] = ""
+                نگاشت_گروه = {
                     "Large Cap": "NIFTY 50",
                     "Mid Cap": "NIFTY MIDCAP 150",
                     "Small Cap": "NIFTY SMALLCAP 250",
@@ -228,47 +235,41 @@ if st.session_state.get("شروع_تحلیل", False):
                     "Multi Cap": "NIFTY 500",
                     "Focused": "NIFTY 500"
                 }
-                صندوق_های_انتخابی["benchmark"] = ""
                 for گروه in گروه_ها:
-                    کدها = انتخاب_صندوق_ها(همه_صندوق_ها, گروه)["scheme_code"]
+                    کدها = انتخاب_صندوق_ها(همه_صندوق_ها, گروه).head(5)["scheme_code"]
                     صندوق_های_انتخابی.loc[
                         صندوق_های_انتخابی["scheme_code"].isin(کدها), "benchmark"
-                    ] = شاخص_مرجع[گروه]
+                    ] = نگاشت_گروه[گروه]
 
                 nav = دریافت_nav(صندوق_های_انتخابی["scheme_code"].tolist())
+                تعداد_دارای_nav = int(nav["scheme_code"].nunique())
                 شاخص_ها = محاسبه_شاخص_ها(nav)
 
-                خروجی_آلفا_بتا = []
-                خطاهای_آلفا_بتا = []
-                منابع_شاخص = []
-                for نام_شاخص in صندوق_های_انتخابی["benchmark"].dropna().unique():
-                    کدهای_گروه = صندوق_های_انتخابی.loc[
-                        صندوق_های_انتخابی["benchmark"] == نام_شاخص, "scheme_code"
-                    ].tolist()
-                    nav_گروه = nav[nav["scheme_code"].astype(str).isin([str(x) for x in کدهای_گروه])]
-                    try:
-                        سری_شاخص = دریافت_شاخص_بازار(
-                            نام_شاخص, nav_گروه["date"].min(), nav_گروه["date"].max()
-                        )
-                        منابع_شاخص.append({
-                            "name": نام_شاخص,
-                            "source": سری_شاخص["source"].iloc[0],
-                            "type": سری_شاخص["benchmark_type"].iloc[0],
-                            "ticker": سری_شاخص["ticker"].iloc[0]
-                        })
-                        خروجی_آلفا_بتا.append(محاسبه_آلفا_بتا(nav_گروه, سری_شاخص))
-                    except Exception as خطا:
-                        خطاهای_آلفا_بتا.append(نام_شاخص + ": " + str(خطا)[:240])
+                # آلفا و بتا از سرویس مستقل دریافت می شوند؛ دیگر به دریافت Nifty/Yahoo وابسته نیستند.
+                جدول_آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(
+                    شاخص_ها["scheme_code"].astype(str).tolist(),
+                    افق="3Y"
+                )
+                شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str)
+                جدول_آلفا_بتا["scheme_code"] = جدول_آلفا_بتا["scheme_code"].astype(str)
+                شاخص_ها = شاخص_ها.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
 
-                if خروجی_آلفا_بتا:
-                    جدول_آلفا_بتا = pd.concat(خروجی_آلفا_بتا, ignore_index=True)
-                    شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str)
-                    جدول_آلفا_بتا["scheme_code"] = جدول_آلفا_بتا["scheme_code"].astype(str)
-                    شاخص_ها = شاخص_ها.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
-                else:
-                    شاخص_ها["alpha"] = float("nan")
-                    شاخص_ها["beta"] = float("nan")
-                    شاخص_ها["common_days"] = 0
+                خطاهای_آلفا_بتا = [
+                    str(ردیف["scheme_code"]) + ": " + str(ردیف["alpha_beta_error"])
+                    for _, ردیف in جدول_آلفا_بتا.iterrows()
+                    if str(ردیف.get("alpha_beta_error", "")).strip()
+                ]
+                منابع_شاخص = [{
+                    "source": "Charlie Alpha API",
+                    "horizon": "3Y",
+                    "benchmark": "شاخص مرجع اختصاصی هر صندوق",
+                    "data_as_of": (
+                        جدول_آلفا_بتا["alpha_beta_as_of"].dropna().iloc[0]
+                        if not جدول_آلفا_بتا["alpha_beta_as_of"].dropna().empty else "نامشخص"
+                    )
+                }]
+                تعداد_تحلیل_شده = int(شاخص_ها["scheme_code"].nunique())
+                تعداد_واجد_شرایط = int(صندوق_های_واجد_شرایط["scheme_code"].nunique())
 
                 نتیجه = رتبه_بندی(شاخص_ها)
                 ستون_رتبه = st.session_state["پروفایل"] + "_rank"
@@ -276,6 +277,10 @@ if st.session_state.get("شروع_تحلیل", False):
                 st.session_state["نتیجه_صندوق"] = نتیجه
                 st.session_state["خطاهای_آلفا_بتا"] = خطاهای_آلفا_بتا
                 st.session_state["منابع_شاخص"] = منابع_شاخص
+                st.session_state["تعداد_کل_دریافتی"] = تعداد_کل_دریافتی
+                st.session_state["تعداد_واجد_شرایط"] = تعداد_واجد_شرایط
+                st.session_state["تعداد_بررسی_شده"] = تعداد_تحلیل_شده
+                st.session_state["تعداد_دارای_nav"] = تعداد_دارای_nav
                 st.session_state["نمایش_نتیجه"] = True
         except Exception as خطا:
             st.error("در تحلیل داده‌ها مشکلی پیش آمد: " + str(خطا))
@@ -290,10 +295,17 @@ if st.session_state.get("نمایش_نتیجه", False):
 
     تعداد_دارای_آلفا = int(نتیجه["alpha"].notna().sum()) if "alpha" in نتیجه.columns else 0
     تعداد_دارای_بتا = int(نتیجه["beta"].notna().sum()) if "beta" in نتیجه.columns else 0
-    k1, k2, k3 = st.columns(3)
-    k1.metric("صندوق‌های بررسی‌شده", len(نتیجه))
-    k2.metric("آلفای قابل محاسبه", str(تعداد_دارای_آلفا) + " از ۵")
-    k3.metric("بتای قابل محاسبه", str(تعداد_دارای_بتا) + " از ۵")
+    # آمار شفاف از کل داده تا انتخاب پنج صندوق نهایی
+    st.markdown("**آمار فرایند انتخاب صندوق‌ها**")
+    آمار_۱, آمار_۲, آمار_۳ = st.columns(3)
+    آمار_۱.metric("صندوق دریافت‌شده از منبع", st.session_state.get("تعداد_کل_دریافتی", "—"))
+    آمار_۲.metric("صندوق واجد شرایط در گروه‌ها", st.session_state.get("تعداد_واجد_شرایط", "—"))
+    آمار_۳.metric("صندوق بررسی عمیق‌شده", st.session_state.get("تعداد_بررسی_شده", "—"))
+    آمار_۴, آمار_۵, آمار_۶ = st.columns(3)
+    آمار_۴.metric("صندوق دارای NAV", st.session_state.get("تعداد_دارای_nav", "—"))
+    آمار_۵.metric("آلفای موجود در ۵ انتخاب", str(تعداد_دارای_آلفا) + " از ۵")
+    آمار_۶.metric("بتای موجود در ۵ انتخاب", str(تعداد_دارای_بتا) + " از ۵")
+    st.caption("برای کنترل زمان دریافت، حداکثر ۵ صندوق از هر یک از ۶ گروه (تا ۳۰ صندوق) وارد بررسی عمیق می‌شوند؛ سپس ۵ صندوق برتر از میان آن‌ها انتخاب می‌شوند.")
 
     for شماره, ردیف in نتیجه.iterrows():
         امتیاز_صندوق = ردیف.get(پروفایل + "_score", float("nan"))
@@ -324,8 +336,8 @@ if st.session_state.get("نمایش_نتیجه", False):
         "max_drawdown": ("بیشترین افت سرمایه", "بزرگ‌ترین افت از قله قبلی تا کف بعدی؛ عدد نزدیک‌تر به صفر بهتر است.", True, "%"),
         "sharpe": ("نسبت شارپ", "بازدهی مازاد به ازای هر واحد نوسان؛ مقدار بالاتر معمولاً بهتر است.", False, ""),
         "sortino": ("نسبت سورتینو", "مانند شارپ است، اما ریسک نزولی را در نظر می‌گیرد.", False, ""),
-        "alpha": ("آلفا", "بازدهی سالانه مازاد نسبت به شاخص مرجع انتخاب‌شده؛ در این نسخه ممکن است بر پایه شاخص جایگزین باشد.", True, "%"),
-        "beta": ("بتا", "حساسیت بازدهی صندوق نسبت به شاخص مرجع؛ نزدیک ۱ یعنی حرکت تقریباً هم‌اندازه شاخص.", False, "")
+        "alpha": ("آلفا", "آلفای سالانه سه‌ساله نسبت به شاخص مرجع همان صندوق؛ از Charlie Alpha API دریافت شده است.", True, "%"),
+        "beta": ("بتا", "بتای سه‌ساله نسبت به شاخص مرجع همان صندوق؛ نزدیک ۱ یعنی حرکت تقریباً هم‌اندازه شاخص.", False, "")
     }
 
     def نمایش_نمودار(ستون):
@@ -380,40 +392,18 @@ if st.session_state.get("نمایش_نتیجه", False):
 
     تب_بازدهی, تب_ریسک, تب_کیفیت, تب_بازار = st.tabs(["بازدهی", "ریسک", "کیفیت عملکرد", "آلفا و بتا"])
     with تب_بازدهی:
-        c1, c2 = st.columns(2)
-        with c1:
-            نمایش_نمودار("return_1w")
-            نمایش_نمودار("return_3m")
-            نمایش_نمودار("return_1y")
-        with c2:
-            نمایش_نمودار("return_1m")
-            نمایش_نمودار("return_6m")
-            نمایش_نمودار("return_3y")
+        for ستون in ["return_1w", "return_1m", "return_3m", "return_6m", "return_1y", "return_3y"]:
+            نمایش_نمودار(ستون)
     with تب_ریسک:
-        c1, c2 = st.columns(2)
-        with c1:
-            نمایش_نمودار("volatility")
-        with c2:
-            نمایش_نمودار("max_drawdown")
+        نمایش_نمودار("volatility")
+        نمایش_نمودار("max_drawdown")
     with تب_کیفیت:
-        c1, c2 = st.columns(2)
-        with c1:
-            نمایش_نمودار("sharpe")
-        with c2:
-            نمایش_نمودار("sortino")
+        نمایش_نمودار("sharpe")
+        نمایش_نمودار("sortino")
     with تب_بازار:
-        نوع_منبع = "شاخص مرجع رسمی Nifty TRI"
-        منابع = st.session_state.get("منابع_شاخص", [])
-        if any("proxy" in str(x.get("type", "")).lower() for x in منابع):
-            نوع_منبع = "شاخص قیمت جایگزین از Yahoo Finance (نه TRI رسمی)"
-            st.info("به دلیل محدودیت دسترسی به Nifty در سرور ابری، در برخی گروه‌ها از سری شاخص قیمت Yahoo Finance استفاده شده است. آلفا در این حالت آلفای تقریبی نسبت به شاخص قیمت است و با آلفای مبتنی بر TRI یکسان نیست.")
-        else:
-            st.caption("منبع محاسبه: " + نوع_منبع)
-        c1, c2 = st.columns(2)
-        with c1:
-            نمایش_نمودار("alpha")
-        with c2:
-            نمایش_نمودار("beta")
+        st.info("آلفا و بتا برای بازه سه‌ساله از Charlie Alpha API دریافت می‌شوند. این سرویس برای هر صندوق، شاخص مرجع مرتبط با همان طرح را در محاسبات خود لحاظ می‌کند.")
+        نمایش_نمودار("alpha")
+        نمایش_نمودار("beta")
 
     st.markdown("---")
     تب_جدول, تب_منابع = st.tabs(["جدول مقایسه", "اطلاعات داده‌ها"])
