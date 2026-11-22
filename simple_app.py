@@ -1,8 +1,8 @@
-# داشبورد ساده پیشنهاد صندوق بر اساس میزان ریسک پذیری کاربر
+# داشبورد فارسی پیشنهاد صندوق بر اساس میزان ریسک پذیری کاربر
 
 import streamlit as st
 import pandas as pd
-import altair as alt
+import plotly.graph_objects as go
 
 from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
 from simple_metrics import (
@@ -11,81 +11,134 @@ from simple_metrics import (
 from simple_ranking import رتبه_بندی
 
 st.set_page_config(
-    page_title="پیشنهادگر صندوق سرمایه گذاری",
-    page_icon="📊",
-    layout="wide"
+    page_title="صندوق‌یار | پیشنهاد هوشمند صندوق",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# ظاهر فارسی و راست چین داشبورد
+# ظاهر جدید: پس زمینه روشن، کارت های سفید، رنگ سرمه ای و فیروزه ای
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
 
+:root {
+    --ink: #17233b;
+    --muted: #6b7890;
+    --primary: #3157d5;
+    --teal: #10a99a;
+    --line: #e8edf5;
+    --surface: #ffffff;
+}
 html, body, [class*="css"], button, input, textarea, select {
     font-family: 'Vazirmatn', sans-serif !important;
-    direction: rtl;
-    text-align: right;
 }
 [data-testid="stAppViewContainer"] {
+    background: #f4f7fb;
     direction: rtl;
 }
-[data-testid="stMarkdownContainer"] p,
-[data-testid="stMarkdownContainer"] li {
-    text-align: right;
-}
-div[data-testid="stRadio"] label {
-    direction: rtl;
-}
+[data-testid="stHeader"] { background: rgba(244,247,251,.88); }
 .block-container {
-    max-width: 1200px;
-    padding-top: 2rem;
+    max-width: 1440px;
+    padding-top: 1.4rem;
+    padding-bottom: 3rem;
 }
-h1, h2, h3 {
-    text-align: right;
-    font-family: 'Vazirmatn', sans-serif !important;
+h1, h2, h3, h4, p, label, li { font-family: 'Vazirmatn', sans-serif !important; }
+h1, h2, h3 { color: var(--ink); letter-spacing: -.35px; }
+[data-testid="stMarkdownContainer"] p { color: #526078; line-height: 1.9; }
+.hero {
+    background: linear-gradient(120deg, #17233b 0%, #263f78 58%, #236e80 100%);
+    border-radius: 26px;
+    padding: 34px 38px;
+    color: white;
+    margin: 4px 0 26px 0;
+    box-shadow: 0 18px 40px rgba(31,54,103,.16);
 }
-[data-testid="stDataFrame"], [data-testid="stTable"] {
-    direction: rtl;
+.hero-kicker { color: #9fe8e0; font-size: 13px; font-weight: 700; letter-spacing: .5px; }
+.hero h1 { color: white !important; font-size: 32px !important; font-weight: 850 !important; margin: 8px 0 6px 0; }
+.hero p { color: #e2eaf8 !important; font-size: 15px; margin: 0; }
+.section-title {
+    color: #17233b; font-size: 21px; font-weight: 800;
+    margin: 12px 0 5px 0;
 }
+.section-subtitle { color: #758198; font-size: 13px; margin-bottom: 16px; }
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border: 1px solid #e7edf5 !important;
+    border-radius: 18px !important;
+    background: white;
+    box-shadow: 0 5px 18px rgba(25,45,80,.035);
+}
+div.stButton > button {
+    border-radius: 12px;
+    border: 0;
+    min-height: 48px;
+    font-weight: 750;
+    background: linear-gradient(100deg, #3157d5, #277d9b);
+    color: white;
+    box-shadow: 0 7px 18px rgba(49,87,213,.18);
+}
+div.stButton > button:hover { color: white; border: 0; filter: brightness(1.06); }
+[data-testid="stRadio"] > label { font-weight: 700; color: #25334d; }
+[data-testid="stRadio"] div[role="radiogroup"] { gap: 7px; }
+[data-testid="stRadio"] div[role="radiogroup"] label {
+    background: #f8faff; border: 1px solid #e8edf5;
+    border-radius: 11px; padding: 9px 13px; margin: 0;
+}
+[data-testid="stRadio"] div[role="radiogroup"] label:hover { border-color: #9aafea; }
+div[data-testid="stMetric"] {
+    background: white; border: 1px solid #e7edf5;
+    padding: 15px 18px; border-radius: 16px;
+}
+div[data-testid="stMetricLabel"] { color: #758198; }
+div[data-testid="stMetricValue"] { color: #1b315b; font-weight: 800; }
+.fund-card {
+    background: white; border: 1px solid #e7edf5;
+    border-radius: 17px; padding: 17px 19px; margin: 9px 0;
+}
+.fund-rank {
+    display: inline-flex; width: 34px; height: 34px;
+    border-radius: 11px; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800;
+    background: linear-gradient(135deg,#3157d5,#10a99a);
+}
+.fund-name { color: #1d2c49; font-size: 14px; font-weight: 750; line-height: 1.8; }
+.fund-score { color: #3157d5; font-weight: 800; font-size: 14px; }
+.chart-card {
+    background: white; border: 1px solid #e7edf5;
+    border-radius: 18px; padding: 15px 15px 4px 15px;
+}
+div[data-testid="stTabs"] button { font-family: 'Vazirmatn', sans-serif !important; font-weight: 700; }
+[data-testid="stDataFrame"] { border: 1px solid #e7edf5; border-radius: 14px; overflow: hidden; }
+hr { border-color: #e7edf5; }
+.small-note { color: #8994a8; font-size: 12px; line-height: 1.8; }
+footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("پیدا کردن صندوق مناسب شما")
-st.write(
-    "به چند سؤال ساده پاسخ دهید تا میزان ریسک پذیری شما مشخص شود. "
-    "سپس پنج صندوق متناسب با پاسخ های شما را بررسی و مقایسه می کنیم."
-)
-st.info(
-    "برای پاسخ دادن به این سؤال ها به دانش بورسی نیاز ندارید. "
-    "فقط گزینه ای را انتخاب کنید که بیشتر به رفتار واقعی شما نزدیک است."
-)
-
-# چهار سؤال ساده برای شناخت رفتار سرمایه گذار
-st.subheader("آزمون شناخت ریسک پذیری")
-
-پاسخ_ها = []
+st.markdown("""
+<div class="hero">
+  <div class="hero-kicker">SMART MUTUAL FUND FINDER</div>
+  <h1>صندوق مناسب خودت رو پیدا کن</h1>
+  <p>چند سؤال کوتاه جواب بده؛ صندوق‌ها رو بر اساس میزان ریسک‌پذیریت بررسی و مقایسه می‌کنیم.</p>
+</div>
+""", unsafe_allow_html=True)
 
 سوال_ها = [
     {
-        "سوال": "۱. اگر ارزش سرمایه شما در یک ماه ۱۵ درصد کم شود، چه واکنشی نشان می دهید؟",
+        "سوال": "۱. اگر ارزش سرمایه‌ات در یک ماه ۱۵ درصد کم شود، چه واکنشی نشان می‌دهی؟",
         "گزینه": [
-            "احتمالاً سرمایه ام را می فروشم تا ضرر بیشتری نکنم.",
-            "نگران می شوم و شاید بخشی از سرمایه را خارج کنم.",
-            "صبر می کنم تا شرایط بازار بهتر شود.",
-            "اگر پول اضافه داشته باشم، ممکن است بیشتر سرمایه گذاری کنم."
+            "احتمالاً سرمایه‌ام را می‌فروشم تا ضرر بیشتری نکنم.",
+            "نگران می‌شوم و شاید بخشی از سرمایه را خارج کنم.",
+            "صبر می‌کنم تا شرایط بازار بهتر شود.",
+            "اگر پول اضافه داشته باشم، ممکن است بیشتر سرمایه‌گذاری کنم."
         ]
     },
     {
-        "سوال": "۲. چه مدت می توانید پول خود را سرمایه گذاری کنید؟",
-        "گزینه": [
-            "کمتر از یک سال",
-            "بین یک تا سه سال",
-            "بین سه تا پنج سال",
-            "بیشتر از پنج سال"
-        ]
+        "سوال": "۲. چه مدت می‌توانی پولت را سرمایه‌گذاری کنی؟",
+        "گزینه": ["کمتر از یک سال", "بین یک تا سه سال", "بین سه تا پنج سال", "بیشتر از پنج سال"]
     },
     {
-        "سوال": "۳. کدام مورد برای شما مهم تر است؟",
+        "سوال": "۳. کدام مورد برایت مهم‌تر است؟",
         "گزینه": [
             "حفظ اصل پول و دوری از نوسان",
             "تعادل بین حفظ سرمایه و کسب سود",
@@ -94,84 +147,79 @@ st.subheader("آزمون شناخت ریسک پذیری")
         ]
     },
     {
-        "سوال": "۴. اگر سرمایه گذاری شما برای مدتی وارد ضرر شود، چه می کنید؟",
+        "سوال": "۴. اگر سرمایه‌گذاری‌ات برای مدتی وارد ضرر شود، چه می‌کنی؟",
         "گزینه": [
-            "ترجیح می دهم سریع از آن خارج شوم.",
-            "بخشی را نگه می دارم و بخشی را می فروشم.",
-            "برای مدتی صبر می کنم.",
+            "ترجیح می‌دهم سریع از آن خارج شوم.",
+            "بخشی را نگه می‌دارم و بخشی را می‌فروشم.",
+            "برای مدتی صبر می‌کنم.",
             "اگر به آینده آن اطمینان داشته باشم، ممکن است بیشتر بخرم."
         ]
     }
 ]
 
-for سوال in سوال_ها:
-    پاسخ = st.radio(
-        سوال["سوال"],
-        سوال["گزینه"],
-        key=سوال["سوال"]
-    )
-    پاسخ_ها.append(سوال["گزینه"].index(پاسخ))
+st.markdown('<div class="section-title">آزمون شناخت ریسک‌پذیری</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-subtitle">پاسخی را انتخاب کن که به رفتار واقعی تو نزدیک‌تر است؛ دانش بورسی لازم نیست.</div>', unsafe_allow_html=True)
 
-if st.button("مشاهده نتیجه و صندوق های پیشنهادی", type="primary", use_container_width=True):
-    # میانگین امتیاز پاسخ ها، سطح ریسک را مشخص می کند
-    امتیاز = sum(پاسخ_ها) / len(پاسخ_ها)
+پاسخ_ها = []
+ستون_سوال = st.columns(2)
+for شماره, سوال in enumerate(سوال_ها):
+    with ستون_سوال[شماره % 2]:
+        with st.container(border=True):
+            پاسخ = st.radio(
+                سوال["سوال"], سوال["گزینه"],
+                key="سوال_ریسک_" + str(شماره),
+                index=None
+            )
+            پاسخ_ها.append(
+                سوال["گزینه"].index(پاسخ) if پاسخ is not None else None
+            )
 
-    if امتیاز <= 0.75:
-        سطح_ریسک = "محافظه کار"
-        پروفایل = "Conservative"
-        توضیح_ریسک = "معمولاً حفظ سرمایه و کاهش نوسان برای شما مهم تر از کسب سود بسیار زیاد است."
-    elif امتیاز <= 1.5:
-        سطح_ریسک = "متوسط"
-        پروفایل = "Moderate"
-        توضیح_ریسک = "شما به دنبال تعادل بین بازدهی و ریسک هستید و نوسان محدود را می پذیرید."
-    elif امتیاز <= 2.25:
-        سطح_ریسک = "رشدگرا"
-        پروفایل = "Growth"
-        توضیح_ریسک = "برای کسب بازدهی بیشتر، حاضر به پذیرش نوسان و افت مقطعی سرمایه هستید."
+if st.button("تحلیل پاسخ‌ها و نمایش صندوق‌های پیشنهادی", type="primary", use_container_width=True):
+    if any(پاسخ is None for پاسخ in پاسخ_ها):
+        st.warning("برای مشخص شدن سطح ریسک‌پذیری، لطفاً به هر چهار سؤال پاسخ بده.")
     else:
-        سطح_ریسک = "ریسک پذیر"
-        پروفایل = "Aggressive"
-        توضیح_ریسک = "شما نوسان های زیاد را بهتر تحمل می کنید و به دنبال بازدهی بالاتر در بلندمدت هستید."
-
-    st.session_state["سطح_ریسک"] = سطح_ریسک
-    st.session_state["پروفایل"] = پروفایل
-    st.session_state["توضیح_ریسک"] = توضیح_ریسک
-    st.session_state["شروع_تحلیل"] = True
+        امتیاز = sum(پاسخ_ها) / len(پاسخ_ها)
+        if امتیاز <= 0.75:
+            سطح, پروفایل = "محافظه‌کار", "Conservative"
+            توضیح = "حفظ سرمایه و کاهش نوسان برای شما اهمیت بیشتری دارد."
+        elif امتیاز <= 1.5:
+            سطح, پروفایل = "متوسط", "Moderate"
+            توضیح = "به دنبال تعادل بین بازدهی و ریسک هستید و نوسان محدود را می‌پذیرید."
+        elif امتیاز <= 2.25:
+            سطح, پروفایل = "رشدگرا", "Growth"
+            توضیح = "برای کسب بازدهی بیشتر، پذیرای نوسان و افت مقطعی سرمایه هستید."
+        else:
+            سطح, پروفایل = "ریسک‌پذیر", "Aggressive"
+            توضیح = "نوسان‌های بیشتر را تحمل می‌کنید و به دنبال بازدهی بالاتر در بلندمدت هستید."
+        st.session_state["سطح_ریسک"] = سطح
+        st.session_state["پروفایل"] = پروفایل
+        st.session_state["توضیح_ریسک"] = توضیح
+        st.session_state["شروع_تحلیل"] = True
+        st.session_state["نمایش_نتیجه"] = False
 
 if st.session_state.get("شروع_تحلیل", False):
-    st.divider()
-    st.subheader("نتیجه آزمون شما")
-    st.success("سطح ریسک پذیری شما: " + st.session_state["سطح_ریسک"])
-    st.write(st.session_state["توضیح_ریسک"])
-    st.caption(
-        "این نتیجه یک ارزیابی آموزشی بر اساس پاسخ های شماست و جایگزین "
-        "مشاوره مالی یا بررسی شرایط شخصی شما نیست."
-    )
+    st.markdown("---")
+    st.markdown('<div class="section-title">نتیجه ارزیابی شما</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns([1, 3])
+    with c1:
+        st.metric("سطح ریسک‌پذیری", st.session_state["سطح_ریسک"])
+    with c2:
+        st.info(st.session_state["توضیح_ریسک"])
+    st.caption("این آزمون صرفاً آموزشی است و جایگزین مشاوره مالی یا بررسی شرایط شخصی شما نیست.")
 
-    if st.button("پیدا کردن صندوق های مناسب من", type="primary", use_container_width=True):
+    if st.button("پیدا کردن ۵ صندوق مناسب من", type="primary", use_container_width=True):
         try:
-            with st.spinner("در حال دریافت فهرست صندوق های سرمایه گذاری..."):
+            with st.spinner("در حال دریافت داده‌ها و تحلیل صندوق‌ها..."):
                 همه_صندوق_ها = دریافت_صندوق_ها()
-
-                # کاربر گروه صندوق را انتخاب نمی کند؛ برنامه خودش گروه ها را بررسی می کند
-                گروه_ها = [
-                    "Large Cap", "Mid Cap", "Small Cap",
-                    "Flexi Cap", "Multi Cap", "Focused"
-                ]
-                فهرست_انتخابی = []
-
+                گروه_ها = ["Large Cap", "Mid Cap", "Small Cap", "Flexi Cap", "Multi Cap", "Focused"]
+                انتخاب_ها = []
                 for گروه in گروه_ها:
-                    صندوق_های_گروه = انتخاب_صندوق_ها(همه_صندوق_ها, گروه)
-                    فهرست_انتخابی.append(صندوق_های_گروه.head(5))
+                    انتخاب_ها.append(انتخاب_صندوق_ها(همه_صندوق_ها, گروه).head(5))
+                صندوق_های_انتخابی = pd.concat(انتخاب_ها, ignore_index=True).drop_duplicates("scheme_code")
 
-                صندوق_های_انتخابی = pd.concat(
-                    فهرست_انتخابی, ignore_index=True
-                ).drop_duplicates(subset=["scheme_code"])
+                if صندوق_های_انتخابی.empty:
+                    raise RuntimeError("صندوق واجد شرایطی در داده دریافتی پیدا نشد.")
 
-            if صندوق_های_انتخابی.empty:
-                st.error("در حال حاضر صندوق مناسبی در اطلاعات دریافتی پیدا نشد.")
-            else:
-                # برای هر گروه، شاخص مرجع مناسب را مشخص می کنیم
                 شاخص_مرجع = {
                     "Large Cap": "NIFTY 50",
                     "Mid Cap": "NIFTY MIDCAP 150",
@@ -184,250 +232,218 @@ if st.session_state.get("شروع_تحلیل", False):
                 for گروه in گروه_ها:
                     کدها = انتخاب_صندوق_ها(همه_صندوق_ها, گروه)["scheme_code"]
                     صندوق_های_انتخابی.loc[
-                        صندوق_های_انتخابی["scheme_code"].isin(کدها),
-                        "benchmark"
+                        صندوق_های_انتخابی["scheme_code"].isin(کدها), "benchmark"
                     ] = شاخص_مرجع[گروه]
 
-                with st.spinner("در حال دریافت اطلاعات صندوق ها و محاسبه شاخص ها..."):
-                    nav = دریافت_nav(
-                        صندوق_های_انتخابی["scheme_code"].tolist()
-                    )
-                    شاخص_ها = محاسبه_شاخص_ها(nav)
+                nav = دریافت_nav(صندوق_های_انتخابی["scheme_code"].tolist())
+                شاخص_ها = محاسبه_شاخص_ها(nav)
 
-                    # آلفا و بتا با شاخص کل بازدهی متناسب با گروه صندوق حساب می شوند
-                    نتیجه_آلفا_بتا = []
-                    خطاهای_آلفا_بتا = []
-                    for نام_شاخص in صندوق_های_انتخابی["benchmark"].dropna().unique():
-                        کدهای_این_گروه = صندوق_های_انتخابی.loc[
-                            صندوق_های_انتخابی["benchmark"] == نام_شاخص,
-                            "scheme_code"
-                        ].tolist()
-                        nav_این_گروه = nav[nav["scheme_code"].isin(کدهای_این_گروه)]
-                        try:
-                            شاخص_بازار = دریافت_شاخص_بازار(
-                                نام_شاخص,
-                                nav_این_گروه["date"].min(),
-                                nav_این_گروه["date"].max()
-                            )
-                            آلفا_بتا = محاسبه_آلفا_بتا(nav_این_گروه, شاخص_بازار)
-                            نتیجه_آلفا_بتا.append(آلفا_بتا)
-                        except Exception as خطا:
-                            # اگر منبع شاخص در دسترس نبود، مقدارها خالی می مانند
-                            خطاهای_آلفا_بتا.append(نام_شاخص + ": " + str(خطا)[:180])
-                            continue
-
-                    if نتیجه_آلفا_بتا:
-                        جدول_آلفا_بتا = pd.concat(
-                            نتیجه_آلفا_بتا, ignore_index=True
-                        ).drop_duplicates(subset=["scheme_code"])
-                        # نوع کد صندوق در هر دو جدول باید یکسان باشد
-                        شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str)
-                        جدول_آلفا_بتا["scheme_code"] = جدول_آلفا_بتا["scheme_code"].astype(str)
-                        شاخص_ها = شاخص_ها.merge(
-                            جدول_آلفا_بتا, on="scheme_code", how="left"
+                خروجی_آلفا_بتا = []
+                خطاهای_آلفا_بتا = []
+                منابع_شاخص = []
+                for نام_شاخص in صندوق_های_انتخابی["benchmark"].dropna().unique():
+                    کدهای_گروه = صندوق_های_انتخابی.loc[
+                        صندوق_های_انتخابی["benchmark"] == نام_شاخص, "scheme_code"
+                    ].tolist()
+                    nav_گروه = nav[nav["scheme_code"].astype(str).isin([str(x) for x in کدهای_گروه])]
+                    try:
+                        سری_شاخص = دریافت_شاخص_بازار(
+                            نام_شاخص, nav_گروه["date"].min(), nav_گروه["date"].max()
                         )
-                    else:
-                        شاخص_ها["alpha"] = float("nan")
-                        شاخص_ها["beta"] = float("nan")
-                        شاخص_ها["common_days"] = 0
+                        منابع_شاخص.append({
+                            "name": نام_شاخص,
+                            "source": سری_شاخص["source"].iloc[0],
+                            "type": سری_شاخص["benchmark_type"].iloc[0],
+                            "ticker": سری_شاخص["ticker"].iloc[0]
+                        })
+                        خروجی_آلفا_بتا.append(محاسبه_آلفا_بتا(nav_گروه, سری_شاخص))
+                    except Exception as خطا:
+                        خطاهای_آلفا_بتا.append(نام_شاخص + ": " + str(خطا)[:240])
 
-                    نتیجه = رتبه_بندی(شاخص_ها)
-                    st.session_state["خطاهای_آلفا_بتا"] = خطاهای_آلفا_بتا
+                if خروجی_آلفا_بتا:
+                    جدول_آلفا_بتا = pd.concat(خروجی_آلفا_بتا, ignore_index=True)
+                    شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str)
+                    جدول_آلفا_بتا["scheme_code"] = جدول_آلفا_بتا["scheme_code"].astype(str)
+                    شاخص_ها = شاخص_ها.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
+                else:
+                    شاخص_ها["alpha"] = float("nan")
+                    شاخص_ها["beta"] = float("nan")
+                    شاخص_ها["common_days"] = 0
 
+                نتیجه = رتبه_بندی(شاخص_ها)
                 ستون_رتبه = st.session_state["پروفایل"] + "_rank"
                 نتیجه = نتیجه.sort_values(ستون_رتبه).head(5).reset_index(drop=True)
-
-                # نام فارسی شاخص ها برای نمایش ساده تر
-                نام_شاخص_ها = {
-                    "return_1w": "بازدهی یک هفته",
-                    "return_1m": "بازدهی یک ماه",
-                    "return_3m": "بازدهی سه ماه",
-                    "return_6m": "بازدهی شش ماه",
-                    "return_1y": "بازدهی یک سال",
-                    "return_3y": "بازدهی سه سال",
-                    "volatility": "نوسان پذیری",
-                    "max_drawdown": "بیشترین افت سرمایه",
-                    "sharpe": "نسبت شارپ",
-                    "sortino": "نسبت سورتینو",
-                    "alpha": "آلفا",
-                    "beta": "بتا"
-                }
-
                 st.session_state["نتیجه_صندوق"] = نتیجه
-                st.session_state["نام_شاخص_ها"] = نام_شاخص_ها
+                st.session_state["خطاهای_آلفا_بتا"] = خطاهای_آلفا_بتا
+                st.session_state["منابع_شاخص"] = منابع_شاخص
                 st.session_state["نمایش_نتیجه"] = True
-
         except Exception as خطا:
-            st.error("هنگام دریافت یا تحلیل اطلاعات مشکلی پیش آمد: " + str(خطا))
+            st.error("در تحلیل داده‌ها مشکلی پیش آمد: " + str(خطا))
 
 if st.session_state.get("نمایش_نتیجه", False):
-    نتیجه = st.session_state["نتیجه_صندوق"]
-    نام_شاخص_ها = st.session_state["نام_شاخص_ها"]
+    نتیجه = st.session_state["نتیجه_صندوق"].copy()
+    پروفایل = st.session_state["پروفایل"]
 
-    st.divider()
-    st.subheader("پنج صندوق پیشنهادی برای شما")
-    st.write(
-        "صندوق ها بر اساس سطح ریسک شما مرتب شده اند. "
-        "رتبه ۱ یعنی بالاترین امتیاز در مدل رتبه بندی این پروژه."
-    )
+    st.markdown("---")
+    st.markdown('<div class="section-title">۵ صندوق برتر متناسب با شما</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-subtitle">رتبه‌ها بر اساس امتیاز مدل آموزشی پروژه محاسبه شده‌اند.</div>', unsafe_allow_html=True)
+
+    تعداد_دارای_آلفا = int(نتیجه["alpha"].notna().sum()) if "alpha" in نتیجه.columns else 0
+    تعداد_دارای_بتا = int(نتیجه["beta"].notna().sum()) if "beta" in نتیجه.columns else 0
+    k1, k2, k3 = st.columns(3)
+    k1.metric("صندوق‌های بررسی‌شده", len(نتیجه))
+    k2.metric("آلفای قابل محاسبه", str(تعداد_دارای_آلفا) + " از ۵")
+    k3.metric("بتای قابل محاسبه", str(تعداد_دارای_بتا) + " از ۵")
 
     for شماره, ردیف in نتیجه.iterrows():
-        with st.container(border=True):
-            ستون_ها = st.columns([1, 5])
-            ستون_ها[0].metric("رتبه", str(شماره + 1))
-            ستون_ها[1].markdown("**" + str(ردیف["scheme_name"]) + "**")
-            st.caption(
-                "امتیاز متناسب با شما: "
-                + str(round(ردیف[st.session_state["پروفایل"] + "_score"], 1))
-                + " از ۱۰۰"
-            )
+        امتیاز_صندوق = ردیف.get(پروفایل + "_score", float("nan"))
+        st.markdown(
+            '<div class="fund-card"><span class="fund-rank">' + str(شماره + 1)
+            + '</span> <span class="fund-name">' + str(ردیف["scheme_name"])
+            + '</span><div class="fund-score">امتیاز تناسب: '
+            + (("{:.1f}".format(امتیاز_صندوق)) if pd.notna(امتیاز_صندوق) else "—")
+            + ' از ۱۰۰</div></div>',
+            unsafe_allow_html=True
+        )
 
-    # گزارش وضعیت دریافت و محاسبه آلفا و بتا
-    if "alpha" in نتیجه.columns and "beta" in نتیجه.columns:
-        تعداد_موفق = int((نتیجه["alpha"].notna() & نتیجه["beta"].notna()).sum())
-        st.caption("صندوق های دارای آلفا و بتای قابل محاسبه: " + str(تعداد_موفق) + " از " + str(len(نتیجه)))
-        if تعداد_موفق == 0:
-            st.warning(
-                "آلفا و بتا هنوز قابل محاسبه نیستند. احتمالاً داده شاخص بازار دریافت نشده "
-                "یا روزهای مشترک کافی بین تاریخ های صندوق و شاخص وجود ندارد."
-            )
-        if "common_days" in نتیجه.columns:
-            وضعیت_روزها = نتیجه[["scheme_name", "common_days"]].copy()
-            وضعیت_روزها["common_days"] = pd.to_numeric(
-                وضعیت_روزها["common_days"], errors="coerce"
-            ).fillna(0).astype(int)
-            for _, ردیف_روز in وضعیت_روزها.iterrows():
-                st.caption(
-                    str(ردیف_روز["scheme_name"]) + " — "
-                    + str(ردیف_روز["common_days"])
-                    + " روز مشترک (حداقل لازم: ۳۰ روز)"
-                )
-    for پیام_خطا in st.session_state.get("خطاهای_آلفا_بتا", []):
-        st.caption("جزئیات دریافت شاخص: " + پیام_خطا)
+    if تعداد_دارای_آلفا == 0 or تعداد_دارای_بتا == 0:
+        st.warning("برای بخشی از صندوق‌ها آلفا یا بتا محاسبه نشده است. جزئیات منبع و تعداد روزهای مشترک را در بخش «اطلاعات داده‌ها» ببینید.")
 
-    st.divider()
-    st.subheader("مقایسه پنج صندوق پیشنهادی")
-    st.write(
-        "در نمودارهای زیر می توانید عملکرد هر پنج صندوق را کنار هم ببینید. "
-        "برای هر شاخص، توضیح ساده هم نوشته شده است."
-    )
+    st.markdown("---")
+    st.markdown('<div class="section-title">مقایسه عملکرد صندوق‌ها</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-subtitle">نمودارهای افقی با نام کامل صندوق و عدد دقیق؛ برای مقایسه راحت‌تر می‌توانید شاخص‌ها را از تب‌های زیر انتخاب کنید.</div>', unsafe_allow_html=True)
 
-    توضیح_شاخص_ها = {
-        "return_1w": "درصد تغییر ارزش صندوق در یک هفته اخیر. برای شناخت وضعیت کوتاه مدت است و به تنهایی معیار تصمیم گیری نیست.",
-        "return_1m": "درصد تغییر ارزش صندوق در یک ماه اخیر.",
-        "return_3m": "درصد تغییر ارزش صندوق در سه ماه اخیر.",
-        "return_6m": "درصد تغییر ارزش صندوق در شش ماه اخیر.",
-        "return_1y": "درصد تغییر ارزش صندوق در یک سال اخیر.",
-        "return_3y": "درصد رشد ارزش سرمایه در سه سال اخیر؛ فرض می شود سود در صندوق باقی مانده و دوباره سرمایه گذاری شده است.",
-        "volatility": "نشان می دهد بازدهی صندوق چقدر بالا و پایین می شود. مقدار کمتر معمولاً به معنی نوسان کمتر است.",
-        "max_drawdown": "بیشترین افت ارزش صندوق از یک قله قبلی تا کف بعدی. افت کمتر معمولاً بهتر است.",
-        "sharpe": "نشان می دهد صندوق در برابر ریسکی که پذیرفته، چه میزان بازدهی داشته است. مقدار بالاتر معمولاً بهتر است.",
-        "sortino": "مانند شارپ است، اما بیشتر روی نوسان های منفی تمرکز می کند. مقدار بالاتر معمولاً بهتر است.",
-        "alpha": "بازدهی اضافه صندوق نسبت به بازدهی مورد انتظار بر اساس شاخص بازار. مقدار مثبت می تواند نشانه عملکرد بهتر باشد.",
-        "beta": "میزان حساسیت صندوق به بالا و پایین رفتن شاخص بازار. بتای نزدیک ۱ یعنی حرکت تقریباً هم اندازه شاخص."
+    نام_شاخص_ها = {
+        "return_1w": ("بازدهی ۱ هفته", "درصد تغییر ارزش صندوق طی یک هفته اخیر.", True, "%"),
+        "return_1m": ("بازدهی ۱ ماه", "درصد تغییر ارزش صندوق طی یک ماه اخیر.", True, "%"),
+        "return_3m": ("بازدهی ۳ ماه", "درصد تغییر ارزش صندوق طی سه ماه اخیر.", True, "%"),
+        "return_6m": ("بازدهی ۶ ماه", "درصد تغییر ارزش صندوق طی شش ماه اخیر.", True, "%"),
+        "return_1y": ("بازدهی ۱ سال", "درصد تغییر ارزش صندوق طی یک سال اخیر.", True, "%"),
+        "return_3y": ("بازدهی ۳ سال", "بازدهی تجمعی سه‌ساله با فرض سرمایه‌گذاری مجدد سود.", True, "%"),
+        "volatility": ("نوسان‌پذیری", "نوسان سالانه بازدهی روزانه؛ مقدار کمتر یعنی نوسان کمتر.", True, "%"),
+        "max_drawdown": ("بیشترین افت سرمایه", "بزرگ‌ترین افت از قله قبلی تا کف بعدی؛ عدد نزدیک‌تر به صفر بهتر است.", True, "%"),
+        "sharpe": ("نسبت شارپ", "بازدهی مازاد به ازای هر واحد نوسان؛ مقدار بالاتر معمولاً بهتر است.", False, ""),
+        "sortino": ("نسبت سورتینو", "مانند شارپ است، اما ریسک نزولی را در نظر می‌گیرد.", False, ""),
+        "alpha": ("آلفا", "بازدهی سالانه مازاد نسبت به شاخص مرجع انتخاب‌شده؛ در این نسخه ممکن است بر پایه شاخص جایگزین باشد.", True, "%"),
+        "beta": ("بتا", "حساسیت بازدهی صندوق نسبت به شاخص مرجع؛ نزدیک ۱ یعنی حرکت تقریباً هم‌اندازه شاخص.", False, "")
     }
 
-    ستون_های_نمایش = [
-        "return_1w", "return_1m", "return_3m",
-        "return_6m", "return_1y", "return_3y",
-        "volatility", "max_drawdown", "sharpe", "sortino",
-        "alpha", "beta"
-    ]
-
-    for ستون in ستون_های_نمایش:
-        if ستون not in نتیجه.columns:
-            continue
-
-        st.markdown("### " + نام_شاخص_ها[ستون])
-        st.write(توضیح_شاخص_ها[ستون])
-
-        if ستون in ["alpha", "beta"] and نتیجه[ستون].isna().all():
-            st.warning(
-                "داده معتبر این شاخص در حال حاضر از منبع بازار دریافت نشده است؛ "
-                "برای جلوگیری از نمایش عدد نادرست، نمودار آن نشان داده نمی شود."
-            )
-            continue
-
-        داده_نمودار = نتیجه[["scheme_name", ستون]].copy()
-        داده_نمودار[ستون] = pd.to_numeric(داده_نمودار[ستون], errors="coerce")
-        داده_نمودار = داده_نمودار.dropna()
-        if داده_نمودار.empty:
-            st.info("برای این شاخص هنوز داده قابل نمایش وجود ندارد.")
-            continue
-
-        if ستون in [
-            "return_1w", "return_1m", "return_3m",
-            "return_6m", "return_1y", "return_3y",
-            "volatility", "max_drawdown", "alpha"
-        ]:
-            داده_نمودار[ستون] = داده_نمودار[ستون] * 100
-            st.caption("مقادیر به درصد نمایش داده شده اند.")
-
-        داده_نمودار = داده_نمودار.rename(columns={ستون: "value"})
-        داده_نمودار["label"] = داده_نمودار["value"].map(
-            lambda مقدار: "{:,.2f}".format(مقدار)
-        )
-
-        # نمودار افقی باعث می شود نام کامل صندوق و مقدار هر میله خوانا باشد
-        ارتفاع = max(190, len(داده_نمودار) * 55)
-        میله = alt.Chart(داده_نمودار).mark_bar(
-            cornerRadiusEnd=5,
-            height=25
-        ).encode(
-            x=alt.X("value:Q", title=نام_شاخص_ها[ستون]),
-            y=alt.Y(
-                "scheme_name:N",
-                sort="-x",
-                title=None,
-                axis=alt.Axis(labelLimit=600, labelFontSize=11)
+    def نمایش_نمودار(ستون):
+        عنوان, توضیح, درصدی, پسوند = نام_شاخص_ها[ستون]
+        داده = نتیجه[["scheme_name", ستون]].copy()
+        داده[ستون] = pd.to_numeric(داده[ستون], errors="coerce")
+        داده = داده.dropna().sort_values(ستون, ascending=True)
+        if داده.empty:
+            st.info("برای این شاخص داده قابل نمایش در دسترس نیست.")
+            return
+        if درصدی:
+            داده[ستون] = داده[ستون] * 100
+        اعداد = داده[ستون].round(2)
+        رنگ‌ها = ["#a8b6d8", "#879bd0", "#6883c8", "#4770bd", "#18a999"]
+        شکل = go.Figure()
+        شکل.add_trace(go.Bar(
+            x=داده[ستون],
+            y=داده["scheme_name"],
+            orientation="h",
+            marker=dict(color=رنگ‌ها[-len(داده):], line=dict(width=0), cornerradius=7),
+            text=[("{:,.2f}".format(x) + پسوند) for x in اعداد],
+            textposition="outside",
+            cliponaxis=False,
+            hovertemplate="<b>%{y}</b><br>" + عنوان + ": %{x:,.2f}" + پسوند + "<extra></extra>"
+        ))
+        شکل.update_layout(
+            height=max(300, 74 * len(داده) + 90),
+            margin=dict(l=12, r=85, t=18, b=48),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Vazirmatn, sans-serif", size=12, color="#526078"),
+            showlegend=False,
+            bargap=.42,
+            xaxis=dict(
+                title=عنوان + (" (" + پسوند + ")" if پسوند else ""),
+                showgrid=True, gridcolor="#edf1f7", zerolinecolor="#dce3ef",
+                tickfont=dict(size=11)
             ),
-            tooltip=[
-                alt.Tooltip("scheme_name:N", title="نام صندوق"),
-                alt.Tooltip("value:Q", title=نام_شاخص_ها[ستون], format=".2f")
-            ]
+            yaxis=dict(
+                title="", automargin=True, tickfont=dict(size=11, color="#293954"),
+                showgrid=False
+            )
         )
-        برچسب = alt.Chart(داده_نمودار).mark_text(
-            align="left",
-            baseline="middle",
-            dx=5,
-            fontSize=11
-        ).encode(
-            x="value:Q",
-            y=alt.Y("scheme_name:N", sort="-x"),
-            text="label:N"
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.markdown("**" + عنوان + "**")
+        st.caption(توضیح)
+        st.plotly_chart(شکل, use_container_width=True, config={"displayModeBar": False})
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    تب_بازدهی, تب_ریسک, تب_کیفیت, تب_بازار = st.tabs(["بازدهی", "ریسک", "کیفیت عملکرد", "آلفا و بتا"])
+    with تب_بازدهی:
+        c1, c2 = st.columns(2)
+        with c1:
+            نمایش_نمودار("return_1w")
+            نمایش_نمودار("return_3m")
+            نمایش_نمودار("return_1y")
+        with c2:
+            نمایش_نمودار("return_1m")
+            نمایش_نمودار("return_6m")
+            نمایش_نمودار("return_3y")
+    with تب_ریسک:
+        c1, c2 = st.columns(2)
+        with c1:
+            نمایش_نمودار("volatility")
+        with c2:
+            نمایش_نمودار("max_drawdown")
+    with تب_کیفیت:
+        c1, c2 = st.columns(2)
+        with c1:
+            نمایش_نمودار("sharpe")
+        with c2:
+            نمایش_نمودار("sortino")
+    with تب_بازار:
+        نوع_منبع = "شاخص مرجع رسمی Nifty TRI"
+        منابع = st.session_state.get("منابع_شاخص", [])
+        if any("Price Index Proxy" in str(x.get("type", "")) for x in منابع):
+            نوع_منبع = "شاخص قیمت جایگزین از Yahoo Finance (نه TRI رسمی)"
+            st.info("به دلیل محدودیت دسترسی به Nifty در سرور ابری، در برخی گروه‌ها از سری شاخص قیمت Yahoo Finance استفاده شده است. آلفا در این حالت آلفای تقریبی نسبت به شاخص قیمت است و با آلفای مبتنی بر TRI یکسان نیست.")
+        else:
+            st.caption("منبع محاسبه: " + نوع_منبع)
+        c1, c2 = st.columns(2)
+        with c1:
+            نمایش_نمودار("alpha")
+        with c2:
+            نمایش_نمودار("beta")
+
+    st.markdown("---")
+    تب_جدول, تب_منابع = st.tabs(["جدول مقایسه", "اطلاعات داده‌ها"])
+    with تب_جدول:
+        ستون_های_جدول = ["scheme_name"] + list(نام_شاخص_ها.keys())
+        جدول = نتیجه[[x for x in ستون_های_جدول if x in نتیجه.columns]].copy()
+        جدول = جدول.rename(columns={"scheme_name": "نام صندوق", **{k: v[0] for k, v in نام_شاخص_ها.items()}})
+        st.dataframe(جدول, use_container_width=True, hide_index=True)
+        st.download_button(
+            "دانلود جدول مقایسه (CSV)",
+            data=جدول.to_csv(index=False).encode("utf-8-sig"),
+            file_name="fund_comparison.csv",
+            mime="text/csv"
         )
-        نمودار = (میله + برچسب).properties(
-            height=ارتفاع,
-            padding={"left": 5, "right": 25}
-        ).configure_view(
-            strokeOpacity=0
-        ).configure_axis(
-            labelFont="Vazirmatn",
-            titleFont="Vazirmatn"
-        )
-        st.altair_chart(نمودار, use_container_width=True)
+    with تب_منابع:
+        st.markdown("**منابع شاخص بازار**")
+        if st.session_state.get("منابع_شاخص"):
+            st.dataframe(pd.DataFrame(st.session_state["منابع_شاخص"]), use_container_width=True, hide_index=True)
+        else:
+            st.info("اطلاعات منبع شاخص در دسترس نیست.")
+        if "common_days" in نتیجه.columns:
+            st.markdown("**تعداد روزهای مشترک برای محاسبه آلفا و بتا**")
+            st.dataframe(
+                نتیجه[["scheme_name", "common_days"]].rename(
+                    columns={"scheme_name": "نام صندوق", "common_days": "روز مشترک"}
+                ),
+                use_container_width=True, hide_index=True
+            )
+        for خطا in st.session_state.get("خطاهای_آلفا_بتا", []):
+            st.warning(خطا)
 
-    st.divider()
-    st.subheader("جدول کامل مقایسه")
-    جدول = نتیجه[
-        ["scheme_name"] + ستون_های_نمایش
-    ].copy()
-    جدول = جدول.rename(columns={
-        "scheme_name": "نام صندوق",
-        **نام_شاخص_ها
-    })
-    st.dataframe(جدول, use_container_width=True, hide_index=True)
-
-    خروجی = جدول.to_csv(index=False).encode("utf-8-sig")
-    st.download_button(
-        "دانلود جدول مقایسه",
-        data=خروجی,
-        file_name="fund_comparison.csv",
-        mime="text/csv"
-    )
-
-st.divider()
-st.caption(
-    "این سامانه یک پروژه آموزشی برای مقایسه صندوق های سرمایه گذاری است "
-    "و توصیه خرید یا فروش محسوب نمی شود. داده ها از API منبع ثالث دریافت می شوند."
+st.markdown("---")
+st.markdown(
+    '<div class="small-note">این سامانه یک پروژه آموزشی برای مقایسه صندوق‌های سرمایه‌گذاری است و توصیه خرید یا فروش محسوب نمی‌شود. داده‌های صندوق و شاخص از سرویس‌های عمومی شخص ثالث دریافت می‌شوند.</div>',
+    unsafe_allow_html=True
 )
