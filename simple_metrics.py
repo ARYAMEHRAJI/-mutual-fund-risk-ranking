@@ -78,20 +78,105 @@ def محاسبه_شاخص_ها(اطلاعات_nav):
 
 
 def دریافت_شاخص_بازار(نام_شاخص, تاریخ_شروع, تاریخ_پایان):
-    # اطلاعات شاخص کل بازدهی را از سایت Nifty دریافت می کنیم
-    آدرس = "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString"
+    # ابتدا منبع رسمی Nifty TRI را امتحان می کنیم.
+    خطای_منبع_رسمی = None
+    try:
+        return _دریافت_شاخص_رسمی(نام_شاخص, تاریخ_شروع, تاریخ_پایان)
+    except Exception as خطا:
+        خطای_منبع_رسمی = str(خطا)
 
-    # تاریخ ها را به شکل مورد قبول سایت تبدیل می کنیم
+    # اگر سرور ابری به Nifty دسترسی نداشت، از سری تاریخی Yahoo Finance
+    # از طریق API عمومی Tigzig استفاده می کنیم.
+    نمادها = {
+        "NIFTY 50": "^NSEI",
+        "NIFTY MIDCAP 150": "^NSMIDCP",
+        "NIFTY SMALLCAP 250": "^CRSLDX",
+        "NIFTY 500": "^CRSLDX"
+    }
+    نماد = نمادها.get(نام_شاخص)
+    if not نماد:
+        raise RuntimeError(
+            "برای شاخص " + نام_شاخص + " نماد جایگزین تعریف نشده است. "
+            + "خطای منبع رسمی: " + str(خطای_منبع_رسمی)[:250]
+        )
+
+    آدرس = "https://yfin-h.tigzig.com/v1/get-adj-close/"
+    پارامترها = {
+        "tickers": نماد,
+        "start_date": pd.Timestamp(تاریخ_شروع).strftime("%Y-%m-%d"),
+        "end_date": pd.Timestamp(تاریخ_پایان).strftime("%Y-%m-%d")
+    }
+    پاسخ = requests.get(
+        آدرس,
+        params=پارامترها,
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=45
+    )
+    پاسخ.raise_for_status()
+
+    try:
+        داده = پاسخ.json()
+    except ValueError:
+        raise ValueError(
+            "منبع جایگزین به جای JSON پاسخ نامعتبر فرستاد: "
+            + پاسخ.text[:180]
+        )
+
+    # پاسخ API ممکن است به شکل فهرست یا دیکشنری برگردد.
+    if isinstance(داده, dict):
+        ردیف_ها = داده.get("data", داده.get("results", داده.get("prices", [])))
+        if isinstance(ردیف_ها, dict):
+            ردیف_ها = ردیف_ها.get(نماد, [])
+    else:
+        ردیف_ها = داده
+
+    if not isinstance(ردیف_ها, list) or not ردیف_ها:
+        raise ValueError(
+            "منبع جایگزین برای نماد " + نماد + " داده ای برنگرداند. "
+            + "خطای Nifty: " + str(خطای_منبع_رسمی)[:180]
+        )
+
+    شاخص = pd.DataFrame(ردیف_ها)
+    ستون_تاریخ = next(
+        (ستون for ستون in ["date", "Date", "datetime", "timestamp"] if ستون in شاخص.columns),
+        None
+    )
+    ستون_قیمت = next(
+        (ستون for ستون in ["adj_close", "Adj Close", "adjclose", "close", "Close"] if ستون in شاخص.columns),
+        None
+    )
+    if ستون_تاریخ is None or ستون_قیمت is None:
+        raise ValueError(
+            "ساختار داده منبع جایگزین قابل شناسایی نیست. ستون ها: "
+            + ", ".join(map(str, شاخص.columns))
+        )
+
+    شاخص = شاخص[[ستون_تاریخ, ستون_قیمت]].copy()
+    شاخص.columns = ["date", "close"]
+    شاخص["date"] = pd.to_datetime(شاخص["date"], errors="coerce", utc=True)
+    شاخص["date"] = شاخص["date"].dt.tz_convert(None).dt.normalize()
+    شاخص["close"] = pd.to_numeric(شاخص["close"], errors="coerce")
+    شاخص = شاخص.dropna().sort_values("date").drop_duplicates("date", keep="last")
+
+    if شاخص.empty:
+        raise ValueError("داده های منبع جایگزین پس از پاک سازی خالی شدند.")
+
+    # این داده شاخص قیمتِ بازار است، نه TRI رسمی؛ در داشبورد شفاف اعلام می شود.
+    شاخص["source"] = "Tigzig / Yahoo Finance - adjusted close"
+    شاخص["benchmark_type"] = "Price Index Proxy (نه TRI رسمی)"
+    شاخص["ticker"] = نماد
+    return شاخص
+
+
+def _دریافت_شاخص_رسمی(نام_شاخص, تاریخ_شروع, تاریخ_پایان):
+    # اطلاعات رسمی Total Return Index از سایت Nifty
+    آدرس = "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString"
     شروع = pd.Timestamp(تاریخ_شروع).strftime("%d-%b-%Y")
     پایان = pd.Timestamp(تاریخ_پایان).strftime("%d-%b-%Y")
-
-    # سایت Nifty این اطلاعات را داخل یک متن مخصوص دریافت می کند
     اطلاعات_درخواست = {
         "cinfo": "{'name':'" + نام_شاخص + "','startDate':'" + شروع
         + "','endDate':'" + پایان + "','indexName':'" + نام_شاخص + "'}"
     }
-
-    # سربرگ های شبیه مرورگر را ارسال می کنیم
     سربرگ = {
         "Content-Type": "application/json; charset=UTF-8",
         "X-Requested-With": "XMLHttpRequest",
@@ -102,77 +187,49 @@ def دریافت_شاخص_بازار(نام_شاخص, تاریخ_شروع, تا�
 
     پاسخ = None
     خطاها = []
-
-    # ابتدا با cloudscraper تلاش می کنیم تا در صورت وجود محافظت سایت عبور کنیم
     try:
         import cloudscraper
         مرورگر = cloudscraper.create_scraper()
         پاسخ = مرورگر.post(
-            آدرس,
-            headers=سربرگ,
-            json=اطلاعات_درخواست,
-            timeout=60
+            آدرس, headers=سربرگ, json=اطلاعات_درخواست, timeout=35
         )
         پاسخ.raise_for_status()
     except Exception as خطا:
         خطاها.append(str(خطا))
-        # اگر روش اول جواب نداد، یک بار با requests معمولی تلاش می کنیم
         try:
             پاسخ = requests.post(
-                آدرس,
-                headers=سربرگ,
-                json=اطلاعات_درخواست,
-                timeout=60
+                آدرس, headers=سربرگ, json=اطلاعات_درخواست, timeout=35
             )
             پاسخ.raise_for_status()
         except Exception as خطای_دوم:
             خطاها.append(str(خطای_دوم))
-            raise RuntimeError(
-                "دریافت شاخص " + نام_شاخص + " از سایت Nifty ناموفق بود: "
-                + " | ".join(خطاها)
-            )
+            raise RuntimeError("دریافت TRI رسمی ناموفق بود: " + " | ".join(خطاها))
 
-    # پاسخ سایت باید JSON باشد؛ اگر نبود، پیام قابل فهم نشان می دهیم
     try:
         محتوای_پاسخ = پاسخ.json()
-    except ValueError:
-        نمونه_پاسخ = پاسخ.text[:200].replace("\\n", " ")
-        raise ValueError(
-            "سایت Nifty به جای JSON پاسخ دیگری فرستاد. "
-            + "کد پاسخ: " + str(پاسخ.status_code)
-            + "، ابتدای پاسخ: " + نمونه_پاسخ
-        )
-
-    if "d" not in محتوای_پاسخ:
-        raise ValueError("ساختار پاسخ سایت Nifty معتبر نیست.")
-
-    # اطلاعات اصلی داخل بخش d قرار دارد
-    ردیف_ها = محتوای_پاسخ["d"]
-    if isinstance(ردیف_ها, str):
-        ردیف_ها = json.loads(ردیف_ها)
+        ردیف_ها = محتوای_پاسخ["d"]
+        if isinstance(ردیف_ها, str):
+            ردیف_ها = json.loads(ردیف_ها)
+    except Exception as خطا:
+        raise ValueError("پاسخ TRI رسمی قابل خواندن نیست: " + str(خطا))
 
     شاخص = pd.DataFrame(ردیف_ها)
-    if شاخص.empty:
-        raise ValueError(
-            "برای شاخص " + نام_شاخص + " در بازه انتخاب شده داده ای پیدا نشد."
-        )
-
-    # نام ستون تاریخ در پاسخ Nifty ممکن است متفاوت باشد
     ستون_تاریخ = "Date" if "Date" in شاخص.columns else "HistoricalDate"
-    if ستون_تاریخ not in شاخص.columns or "TotalReturnsIndex" not in شاخص.columns:
-        raise ValueError("ستون های مورد انتظار در اطلاعات شاخص پیدا نشد.")
+    if شاخص.empty or ستون_تاریخ not in شاخص.columns or "TotalReturnsIndex" not in شاخص.columns:
+        raise ValueError("داده TRI رسمی ساختار مورد انتظار را ندارد.")
 
     شاخص = شاخص[[ستون_تاریخ, "TotalReturnsIndex"]].copy()
     شاخص.columns = ["date", "close"]
-    شاخص["date"] = pd.to_datetime(شاخص["date"], errors="coerce")
+    شاخص["date"] = pd.to_datetime(شاخص["date"], errors="coerce", utc=True)
+    شاخص["date"] = شاخص["date"].dt.tz_convert(None).dt.normalize()
     شاخص["close"] = pd.to_numeric(شاخص["close"], errors="coerce")
-    شاخص = شاخص.dropna().sort_values("date")
-
+    شاخص = شاخص.dropna().sort_values("date").drop_duplicates("date", keep="last")
     if شاخص.empty:
-        raise ValueError("داده های شاخص پس از پاک سازی خالی شدند.")
-
+        raise ValueError("داده TRI رسمی خالی است.")
+    شاخص["source"] = "Nifty Indices - Official TRI"
+    شاخص["benchmark_type"] = "Official TRI"
+    شاخص["ticker"] = نام_شاخص
     return شاخص
-
 
 def محاسبه_آلفا_بتا(اطلاعات_nav, اطلاعات_شاخص):
     # تاریخ های صندوق و شاخص را یک شکل می کنیم تا اختلاف ساعت باعث حذف روزهای مشترک نشود
