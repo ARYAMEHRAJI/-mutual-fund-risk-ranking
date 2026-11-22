@@ -78,48 +78,98 @@ def محاسبه_شاخص_ها(اطلاعات_nav):
 
 
 def دریافت_شاخص_بازار(نام_شاخص, تاریخ_شروع, تاریخ_پایان):
-    # اطلاعات شاخص کل بازدهی را از سایت رسمی Nifty Indices می گیریم
+    # اطلاعات شاخص کل بازدهی را از سایت Nifty دریافت می کنیم
     آدرس = "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString"
 
     # تاریخ ها را به شکل مورد قبول سایت تبدیل می کنیم
     شروع = pd.Timestamp(تاریخ_شروع).strftime("%d-%b-%Y")
     پایان = pd.Timestamp(تاریخ_پایان).strftime("%d-%b-%Y")
 
-    # سایت این اطلاعات را در قالب یک متن خاص دریافت می کند
+    # سایت Nifty این اطلاعات را داخل یک متن مخصوص دریافت می کند
     اطلاعات_درخواست = {
         "cinfo": "{'name':'" + نام_شاخص + "','startDate':'" + شروع
         + "','endDate':'" + پایان + "','indexName':'" + نام_شاخص + "'}"
     }
 
-    # این سربرگ ها باعث می شوند درخواست شبیه مرورگر عادی باشد
+    # سربرگ های شبیه مرورگر را ارسال می کنیم
     سربرگ = {
         "Content-Type": "application/json; charset=UTF-8",
         "X-Requested-With": "XMLHttpRequest",
         "Referer": "https://www.niftyindices.com/reports/historical-data",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
+        "Origin": "https://www.niftyindices.com",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36"
     }
 
-    پاسخ = requests.post(
-        آدرس,
-        headers=سربرگ,
-        data=json.dumps(اطلاعات_درخواست),
-        timeout=60
-    )
-    پاسخ.raise_for_status()
+    پاسخ = None
+    خطاها = []
 
-    # پاسخ سایت دوبار به JSON تبدیل می شود
-    ردیف_ها = json.loads(پاسخ.json()["d"])
+    # ابتدا با cloudscraper تلاش می کنیم تا در صورت وجود محافظت سایت عبور کنیم
+    try:
+        import cloudscraper
+        مرورگر = cloudscraper.create_scraper()
+        پاسخ = مرورگر.post(
+            آدرس,
+            headers=سربرگ,
+            json=اطلاعات_درخواست,
+            timeout=60
+        )
+        پاسخ.raise_for_status()
+    except Exception as خطا:
+        خطاها.append(str(خطا))
+        # اگر روش اول جواب نداد، یک بار با requests معمولی تلاش می کنیم
+        try:
+            پاسخ = requests.post(
+                آدرس,
+                headers=سربرگ,
+                json=اطلاعات_درخواست,
+                timeout=60
+            )
+            پاسخ.raise_for_status()
+        except Exception as خطای_دوم:
+            خطاها.append(str(خطای_دوم))
+            raise RuntimeError(
+                "دریافت شاخص " + نام_شاخص + " از سایت Nifty ناموفق بود: "
+                + " | ".join(خطاها)
+            )
+
+    # پاسخ سایت باید JSON باشد؛ اگر نبود، پیام قابل فهم نشان می دهیم
+    try:
+        محتوای_پاسخ = پاسخ.json()
+    except ValueError:
+        نمونه_پاسخ = پاسخ.text[:200].replace("\\n", " ")
+        raise ValueError(
+            "سایت Nifty به جای JSON پاسخ دیگری فرستاد. "
+            + "کد پاسخ: " + str(پاسخ.status_code)
+            + "، ابتدای پاسخ: " + نمونه_پاسخ
+        )
+
+    if "d" not in محتوای_پاسخ:
+        raise ValueError("ساختار پاسخ سایت Nifty معتبر نیست.")
+
+    # اطلاعات اصلی داخل بخش d قرار دارد
+    ردیف_ها = محتوای_پاسخ["d"]
+    if isinstance(ردیف_ها, str):
+        ردیف_ها = json.loads(ردیف_ها)
+
     شاخص = pd.DataFrame(ردیف_ها)
-
     if شاخص.empty:
-        raise ValueError("اطلاعات شاخص انتخاب شده از سایت دریافت نشد.")
+        raise ValueError(
+            "برای شاخص " + نام_شاخص + " در بازه انتخاب شده داده ای پیدا نشد."
+        )
 
-    # فقط تاریخ و مقدار شاخص را نگه می داریم
-    شاخص = شاخص[["Date", "TotalReturnsIndex"]].copy()
+    # نام ستون تاریخ در پاسخ Nifty ممکن است متفاوت باشد
+    ستون_تاریخ = "Date" if "Date" in شاخص.columns else "HistoricalDate"
+    if ستون_تاریخ not in شاخص.columns or "TotalReturnsIndex" not in شاخص.columns:
+        raise ValueError("ستون های مورد انتظار در اطلاعات شاخص پیدا نشد.")
+
+    شاخص = شاخص[[ستون_تاریخ, "TotalReturnsIndex"]].copy()
     شاخص.columns = ["date", "close"]
-    شاخص["date"] = pd.to_datetime(شاخص["date"], format="%d %b %Y")
+    شاخص["date"] = pd.to_datetime(شاخص["date"], errors="coerce")
     شاخص["close"] = pd.to_numeric(شاخص["close"], errors="coerce")
     شاخص = شاخص.dropna().sort_values("date")
+
+    if شاخص.empty:
+        raise ValueError("داده های شاخص پس از پاک سازی خالی شدند.")
 
     return شاخص
 
