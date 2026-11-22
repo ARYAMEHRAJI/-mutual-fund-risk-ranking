@@ -359,13 +359,13 @@ if st.session_state.get("نمایش_نتیجه", False):
         if درصدی:
             داده[ستون] = داده[ستون] * 100
         اعداد = داده[ستون].round(2)
-        رنگ‌ها = ["#a8b6d8", "#879bd0", "#6883c8", "#4770bd", "#18a999"]
+        رنگ_ها = ["#a8b6d8", "#879bd0", "#6883c8", "#4770bd", "#18a999"]
         شکل = go.Figure()
         شکل.add_trace(go.Bar(
             x=داده[ستون],
             y=داده["scheme_name"],
             orientation="h",
-            marker=dict(color=رنگ‌ها[-len(داده):], line=dict(width=0)),
+            marker=dict(color=رنگ_ها[-len(داده):], line=dict(width=0)),
             text=[("{:,.2f}".format(x) + پسوند) for x in اعداد],
             textposition="outside",
             cliponaxis=False,
