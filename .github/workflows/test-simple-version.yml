@@ -41,16 +41,6 @@ jobs:
           from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
           from simple_ranking import رتبه_بندی
 
-          import requests
-          print("آزمون منبع جایگزین Manyx...")
-          manyx = requests.get(
-              "https://screener.manyxlabs.com/data/fund/118834.json",
-              headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
-              timeout=20
-          )
-          print("Manyx status:", manyx.status_code)
-          print("Manyx sample:", manyx.text[:250])
-
           print("1) دریافت فهرست صندوق ها...")
           همه = دریافت_صندوق_ها()
           if همه.empty:
@@ -87,8 +77,6 @@ jobs:
           تعداد_بتا = int(result["beta"].notna().sum())
           print("صندوق های دارای آلفا:", تعداد_آلفا)
           print("صندوق های دارای بتا:", تعداد_بتا)
-          print("کدها و خطاهای API:")
-          print(alpha_beta[["scheme_code", "alpha_beta_error"]].to_string(index=False))
           if تعداد_آلفا == 0 or تعداد_بتا == 0:
               raise RuntimeError("API آلفا و بتا برای هیچ کدام از صندوق های آزمون داده برنگرداند.")
 
