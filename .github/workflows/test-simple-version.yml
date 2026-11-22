@@ -62,15 +62,22 @@ jobs:
           if metrics.empty:
               raise RuntimeError("شاخص های صندوق محاسبه نشدند.")
 
-          print("5) دریافت شاخص مرجع NIFTY 50 TRI...")
-          benchmark = دریافت_شاخص_بازار("NIFTY 50", nav["date"].min(), nav["date"].max())
-          if benchmark.empty:
-              raise RuntimeError("داده شاخص مرجع خالی است.")
-
-          print("6) محاسبه آلفا و بتا...")
-          alpha_beta = محاسبه_آلفا_بتا(nav, benchmark)
-          print("تعداد صندوق های دارای آلفا و بتا:", len(alpha_beta))
-          result = metrics.merge(alpha_beta, on="scheme_code", how="left")
+          print("5) تلاش برای دریافت شاخص مرجع NIFTY 50 TRI...")
+          try:
+              benchmark = دریافت_شاخص_بازار("NIFTY 50", nav["date"].min(), nav["date"].max())
+              if benchmark.empty:
+                  raise RuntimeError("داده شاخص مرجع خالی است.")
+              print("تعداد ردیف های شاخص مرجع:", len(benchmark))
+              print("6) محاسبه آلفا و بتا...")
+              alpha_beta = محاسبه_آلفا_بتا(nav, benchmark)
+              print("تعداد صندوق های دارای آلفا و بتا:", len(alpha_beta))
+              result = metrics.merge(alpha_beta, on="scheme_code", how="left")
+          except Exception as error:
+              print("هشدار: منبع TRI در محیط GitHub در دسترس نیست:", error)
+              print("رتبه بندی را بدون آلفا و بتا ادامه می دهیم؛ این دو مقدار خالی می مانند.")
+              result = metrics.copy()
+              result["alpha"] = float("nan")
+              result["beta"] = float("nan")
 
           print("7) رتبه بندی چهار پروفایل...")
           ranked = رتبه_بندی(result)
