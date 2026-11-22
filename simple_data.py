@@ -1,6 +1,7 @@
 # این فایل فقط اطلاعات صندوق ها و قیمت واحدهای آن ها را از اینترنت می گیرد.
 
 import time
+import io
 import requests
 import pandas as pd
 
@@ -15,7 +16,7 @@ def دریافت_صندوق_ها():
     پاسخ.raise_for_status()
 
     # اطلاعات را به جدول تبدیل می کنیم
-    صندوق_ها = pd.read_csv(pd.io.common.StringIO(پاسخ.text))
+    صندوق_ها = pd.read_csv(io.StringIO(پاسخ.text))
     return صندوق_ها
 
 
