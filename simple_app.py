@@ -2,9 +2,12 @@
 
 import streamlit as st
 import pandas as pd
+import altair as alt
 
 from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
-from simple_metrics import محاسبه_شاخص_ها
+from simple_metrics import (
+    محاسبه_شاخص_ها, دریافت_شاخص_بازار, محاسبه_آلفا_بتا
+)
 from simple_ranking import رتبه_بندی
 
 st.set_page_config(
@@ -16,7 +19,10 @@ st.set_page_config(
 # ظاهر فارسی و راست چین داشبورد
 st.markdown("""
 <style>
-html, body, [class*="css"] {
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap');
+
+html, body, [class*="css"], button, input, textarea, select {
+    font-family: 'Vazirmatn', sans-serif !important;
     direction: rtl;
     text-align: right;
 }
@@ -36,6 +42,10 @@ div[data-testid="stRadio"] label {
 }
 h1, h2, h3 {
     text-align: right;
+    font-family: 'Vazirmatn', sans-serif !important;
+}
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+    direction: rtl;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -161,14 +171,60 @@ if st.session_state.get("شروع_تحلیل", False):
             if صندوق_های_انتخابی.empty:
                 st.error("در حال حاضر صندوق مناسبی در اطلاعات دریافتی پیدا نشد.")
             else:
+                # برای هر گروه، شاخص مرجع مناسب را مشخص می کنیم
+                شاخص_مرجع = {
+                    "Large Cap": "NIFTY 50 TRI",
+                    "Mid Cap": "NIFTY MIDCAP 150 TRI",
+                    "Small Cap": "NIFTY SMALLCAP 250 TRI",
+                    "Flexi Cap": "NIFTY 500 TRI",
+                    "Multi Cap": "NIFTY 500 TRI",
+                    "Focused": "NIFTY 500 TRI"
+                }
+                صندوق_های_انتخابی["benchmark"] = ""
+                for گروه in گروه_ها:
+                    کدها = انتخاب_صندوق_ها(همه_صندوق_ها, گروه)["scheme_code"]
+                    صندوق_های_انتخابی.loc[
+                        صندوق_های_انتخابی["scheme_code"].isin(کدها),
+                        "benchmark"
+                    ] = شاخص_مرجع[گروه]
+
                 with st.spinner("در حال دریافت اطلاعات صندوق ها و محاسبه شاخص ها..."):
                     nav = دریافت_nav(
                         صندوق_های_انتخابی["scheme_code"].tolist()
                     )
                     شاخص_ها = محاسبه_شاخص_ها(nav)
-                    # تا زمان دسترسی به داده معتبر شاخص بازار، آلفا و بتا خالی می مانند
-                    شاخص_ها["alpha"] = float("nan")
-                    شاخص_ها["beta"] = float("nan")
+
+                    # آلفا و بتا با شاخص کل بازدهی متناسب با گروه صندوق حساب می شوند
+                    نتیجه_آلفا_بتا = []
+                    for نام_شاخص in صندوق_های_انتخابی["benchmark"].dropna().unique():
+                        کدهای_این_گروه = صندوق_های_انتخابی.loc[
+                            صندوق_های_انتخابی["benchmark"] == نام_شاخص,
+                            "scheme_code"
+                        ].tolist()
+                        nav_این_گروه = nav[nav["scheme_code"].isin(کدهای_این_گروه)]
+                        try:
+                            شاخص_بازار = دریافت_شاخص_بازار(
+                                نام_شاخص,
+                                nav_این_گروه["date"].min(),
+                                nav_این_گروه["date"].max()
+                            )
+                            آلفا_بتا = محاسبه_آلفا_بتا(nav_این_گروه, شاخص_بازار)
+                            نتیجه_آلفا_بتا.append(آلفا_بتا)
+                        except Exception:
+                            # اگر منبع شاخص در دسترس نبود، مقدارها خالی می مانند
+                            continue
+
+                    if نتیجه_آلفا_بتا:
+                        جدول_آلفا_بتا = pd.concat(
+                            نتیجه_آلفا_بتا, ignore_index=True
+                        ).drop_duplicates(subset=["scheme_code"])
+                        شاخص_ها = شاخص_ها.merge(
+                            جدول_آلفا_بتا, on="scheme_code", how="left"
+                        )
+                    else:
+                        شاخص_ها["alpha"] = float("nan")
+                        شاخص_ها["beta"] = float("nan")
+
                     نتیجه = رتبه_بندی(شاخص_ها)
 
                 ستون_رتبه = st.session_state["پروفایل"] + "_rank"
@@ -263,18 +319,63 @@ if st.session_state.get("نمایش_نتیجه", False):
             continue
 
         داده_نمودار = نتیجه[["scheme_name", ستون]].copy()
-        داده_نمودار = داده_نمودار.set_index("scheme_name")
-        داده_نمودار.columns = [نام_شاخص_ها[ستون]]
+        داده_نمودار[ستون] = pd.to_numeric(داده_نمودار[ستون], errors="coerce")
         داده_نمودار = داده_نمودار.dropna()
+        if داده_نمودار.empty:
+            st.info("برای این شاخص هنوز داده قابل نمایش وجود ندارد.")
+            continue
 
         if ستون in [
             "return_1w", "return_1m", "return_3m",
             "return_6m", "return_1y", "return_3y",
             "volatility", "max_drawdown", "alpha"
         ]:
-            داده_نمودار = داده_نمودار * 100
-            st.caption("مقادیر نمودار به درصد نمایش داده شده اند.")
-        st.bar_chart(داده_نمودار, use_container_width=True)
+            داده_نمودار[ستون] = داده_نمودار[ستون] * 100
+            st.caption("مقادیر به درصد نمایش داده شده اند.")
+
+        داده_نمودار = داده_نمودار.rename(columns={ستون: "value"})
+        داده_نمودار["label"] = داده_نمودار["value"].map(
+            lambda مقدار: "{:,.2f}".format(مقدار)
+        )
+
+        # نمودار افقی باعث می شود نام کامل صندوق و مقدار هر میله خوانا باشد
+        ارتفاع = max(190, len(داده_نمودار) * 55)
+        میله = alt.Chart(داده_نمودار).mark_bar(
+            cornerRadiusEnd=5,
+            height=25
+        ).encode(
+            x=alt.X("value:Q", title=نام_شاخص_ها[ستون]),
+            y=alt.Y(
+                "scheme_name:N",
+                sort="-x",
+                title=None,
+                axis=alt.Axis(labelLimit=600, labelFontSize=11)
+            ),
+            tooltip=[
+                alt.Tooltip("scheme_name:N", title="نام صندوق"),
+                alt.Tooltip("value:Q", title=نام_شاخص_ها[ستون], format=".2f")
+            ]
+        )
+        برچسب = alt.Chart(داده_نمودار).mark_text(
+            align="left",
+            baseline="middle",
+            dx=5,
+            fontSize=11
+        ).encode(
+            x="value:Q",
+            y=alt.Y("scheme_name:N", sort="-x"),
+            text="label:N"
+        )
+        نمودار = (میله + برچسب).properties(
+            height=ارتفاع,
+            padding={"left": 5, "right": 25}
+        ).configure_view(
+            strokeOpacity=0
+        ).configure_axis(
+            labelFont="Vazirmatn",
+            titleFont="Vazirmatn"
+        )
+        st.altair_chart(نمودار, use_container_width=True)
 
     st.divider()
     st.subheader("جدول کامل مقایسه")
