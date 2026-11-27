@@ -105,7 +105,9 @@ def دریافت_دارایی_تحت_مدیریت(کد_صندوق_ها):
     جزئیات["aum_cr"] = pd.to_numeric(
         جزئیات["amfi_daily_fund_aum_cr_all_plans"], errors="coerce"
     )
-    جزئیات["aum_as_of"] = جزئیات["amfi_daily_aum_date"].astype(str)
+    جزئیات["aum_as_of"] = pd.to_datetime(
+        جزئیات["amfi_daily_aum_date"], errors="coerce"
+    ).dt.strftime("%Y-%m-%d")
 
     کدها = [
         str(کد).strip().removesuffix(".0") for کد in کد_صندوق_ها
