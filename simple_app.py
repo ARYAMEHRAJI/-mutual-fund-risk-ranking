@@ -11,6 +11,14 @@ from simple_ranking import رتبه_بندی
 from simple_database import ذخیره_نتایج, آمار_پایگاه_داده
 
 
+st.set_page_config(
+    page_title="صندوق‌یار | پیشنهاد هوشمند صندوق",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def دریافت_فهرست_ذخیره_شده():
     return دریافت_صندوق_ها()
@@ -20,12 +28,6 @@ def دریافت_فهرست_ذخیره_شده():
 def دریافت_nav_ذخیره_شده(کدها):
     return دریافت_nav(list(کدها))
 
-st.set_page_config(
-    page_title="صندوق‌یار | پیشنهاد هوشمند صندوق",
-    page_icon="📈",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
 
 # ظاهر جدید: پس زمینه روشن، کارت های سفید، رنگ سرمه ای و فیروزه ای
 st.markdown("""
