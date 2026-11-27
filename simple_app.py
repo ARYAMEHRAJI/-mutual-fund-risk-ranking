@@ -8,7 +8,7 @@ import html
 
 from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav, دریافت_دارایی_تحت_مدیریت
 from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
-from simple_ranking import رتبه_بندی
+from simple_ranking import رتبه_بندی, انتخاب_صندوق_های_متنوع
 from simple_database import ذخیره_نتایج, آمار_پایگاه_داده
 
 
@@ -613,7 +613,7 @@ if st.session_state.get("شروع_تحلیل", False):
                         raise RuntimeError("فایل آخرین به‌روزرسانی خالی است.")
                     ستون_امتیاز = st.session_state["پروفایل"] + "_score"
                     نتیجه_قابل_رتبه = نتیجه_کامل.dropna(subset=[ستون_امتیاز])
-                    نتیجه = نتیجه_قابل_رتبه.sort_values(ستون_امتیاز, ascending=False).head(5).reset_index(drop=True)
+                    نتیجه = انتخاب_صندوق_های_متنوع(نتیجه_قابل_رتبه, ستون_امتیاز, تعداد=5, حداکثر_از_هر_گروه=2)
                     if نتیجه.empty:
                         raise RuntimeError("برای این پروفایل صندوق رتبه‌بندی‌شده‌ای در فایل روزانه وجود ندارد.")
                     تعداد_کل_دریافتی = int(تصویر.get("source_funds", 0))
@@ -727,9 +727,8 @@ if st.session_state.get("شروع_تحلیل", False):
                         if نتیجه_قابل_رتبه.empty:
                             raise RuntimeError("هیچ صندوقی حداقل شرایط لازم برای رتبه‌بندی را نداشت.")
         
-                        نتیجه = (
-                            نتیجه_قابل_رتبه.sort_values(ستون_امتیاز, ascending=False)
-                            .head(5).reset_index(drop=True)
+                        نتیجه = انتخاب_صندوق_های_متنوع(
+                            نتیجه_قابل_رتبه, ستون_امتیاز, تعداد=5, حداکثر_از_هر_گروه=2
                         )
         
                         # دریافت آلفا و بتا فقط برای پنج گزینه نهایی، برای جلوگیری از انتظار طولانی
@@ -793,9 +792,9 @@ if st.session_state.get("نمایش_نتیجه", False):
     آمار_۱, آمار_۲, آمار_۳ = st.columns(3)
     آمار_۱.metric("صندوق دریافت‌شده از منبع", st.session_state.get("تعداد_کل_دریافتی", "—"))
     آمار_۲.metric("صندوق واجد شرایط در گروه‌ها", st.session_state.get("تعداد_واجد_شرایط", "—"))
-    آمار_۳.metric("صندوق بررسی عمیق‌شده", st.session_state.get("تعداد_بررسی_شده", "—"))
+    آمار_۳.metric("صندوق دارای شاخص معتبر", st.session_state.get("تعداد_بررسی_شده", "—"))
     آمار_۴, آمار_۵, آمار_۶ = st.columns(3)
-    آمار_۴.metric("صندوق دارای NAV", st.session_state.get("تعداد_دارای_nav", "—"))
+    آمار_۴.metric("صندوق دارای داده NAV", st.session_state.get("تعداد_دارای_nav", "—"))
     آمار_۵.metric("آلفای دریافت‌شده برای ۵ صندوق", st.session_state.get("تعداد_آلفا_کل", "—"))
     آمار_۶.metric("بتای دریافت‌شده برای ۵ صندوق", st.session_state.get("تعداد_بتا_کل", "—"))
     st.caption("آخرین به‌روزرسانی خودکار داده‌ها: " + str(st.session_state.get("آخرین_به_روزرسانی", "در دسترس نیست")))
@@ -843,7 +842,7 @@ if st.session_state.get("نمایش_نتیجه", False):
         )
 
     if تعداد_دارای_آلفا == 0 or تعداد_دارای_بتا == 0:
-        st.warning("برای بخشی از صندوق‌ها آلفا یا بتا از سرویس دریافت نشده است. جزئیات خطا و منبع را در بخش «اطلاعات داده‌ها» ببینید.")
+        st.warning("آلفا یا بتا برای برخی از صندوق‌ها دریافت نشده است؛ این وضعیت به معنی صفر بودن مقدار شاخص نیست. جزئیات خطای API را در بخش «اطلاعات داده‌ها» ببینید.")
 
     st.markdown("---")
     st.markdown('<div class="section-title">مقایسه عملکرد صندوق‌ها</div>', unsafe_allow_html=True)
@@ -942,6 +941,8 @@ if st.session_state.get("نمایش_نتیجه", False):
     with تب_جدول:
         ستون_های_جدول = ["scheme_name", "fund_group", "data_coverage", پروفایل + "_score"] + list(نام_شاخص_ها.keys())
         جدول = نتیجه[[x for x in ستون_های_جدول if x in نتیجه.columns]].copy()
+        if "alpha" in جدول.columns:
+            جدول["alpha"] = pd.to_numeric(جدول["alpha"], errors="coerce") * 100
         if "fund_group" in جدول.columns:
             جدول["fund_group"] = جدول["fund_group"].map(
                 نام_فارسی_گروه_ها
