@@ -498,6 +498,8 @@ if صفحه_فعال == "مقایسه صندوق‌ها":
             ["scheme_name", "fund_group"] +
             [ستون for ستون in نام_شاخص_های_مقایسه if ستون in نتیجه_مقایسه.columns]
         ].copy()
+        if "alpha" in جدول_مقایسه.columns:
+            جدول_مقایسه["alpha"] = pd.to_numeric(جدول_مقایسه["alpha"], errors="coerce") * 100
         جدول_مقایسه["fund_group"] = جدول_مقایسه["fund_group"].map(
             نام_فارسی_دسته_ها
         ).fillna(جدول_مقایسه["fund_group"])
@@ -843,6 +845,10 @@ if st.session_state.get("نمایش_نتیجه", False):
 
     if تعداد_دارای_آلفا == 0 or تعداد_دارای_بتا == 0:
         st.warning("آلفا یا بتا برای برخی از صندوق‌ها دریافت نشده است؛ این وضعیت به معنی صفر بودن مقدار شاخص نیست. جزئیات خطای API را در بخش «اطلاعات داده‌ها» ببینید.")
+    if st.session_state.get("خطاهای_آلفا_بتا"):
+        with st.expander("جزئیات خطاهای دریافت آلفا و بتا"):
+            for خطا in st.session_state["خطاهای_آلفا_بتا"]:
+                st.caption(خطا)
 
     st.markdown("---")
     st.markdown('<div class="section-title">مقایسه عملکرد صندوق‌ها</div>', unsafe_allow_html=True)
