@@ -98,7 +98,7 @@ def ذخیره_نتایج(جدول):
         "metrics_as_of", "return_1w", "return_1m", "return_3m",
         "return_6m", "return_1y", "return_3y", "volatility",
         "max_drawdown", "sharpe", "sortino", "alpha", "beta",
-        "return_score", "risk_score", "quality_score",
+        "aum_cr", "aum_as_of", "return_score", "risk_score", "quality_score", "size_score",
         "Conservative_score", "Moderate_score", "Growth_score",
         "Aggressive_score", "data_coverage"
     ]
