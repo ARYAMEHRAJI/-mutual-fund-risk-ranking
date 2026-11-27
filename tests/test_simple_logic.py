@@ -50,8 +50,9 @@ class TestFundRanking(unittest.TestCase):
         data = self.make_data()
         data.loc[0, "return_3y"] = np.nan
         result = رتبه_بندی(data)
-        self.assertFalse(bool(result.loc[0, "eligible_for_ranking"]))
-        self.assertTrue(pd.isna(result.loc[0, "Conservative_rank"]))
+        missing = result[result["scheme_code"] == "Debt - Liquid0"].iloc[0]
+        self.assertFalse(bool(missing["eligible_for_ranking"]))
+        self.assertTrue(pd.isna(missing["Conservative_rank"]))
 
 
 class TestFundData(unittest.TestCase):
