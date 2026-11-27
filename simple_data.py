@@ -93,7 +93,7 @@ def انتخاب_صندوق_ها(صندوق_ها):
     باز = داده["scheme_type"].astype(str).str.lower().str.contains("open ended", na=False)
 
     # برای محاسبه عملکرد سه‌ساله، صندوق باید حداقل سه سال سابقه داشته باشد.
-    داده["first_date"] = pd.to_datetime(dاده["first_date"], errors="coerce")
+    داده["first_date"] = pd.to_datetime(داده["first_date"], errors="coerce")
     تاریخ_مجاز = pd.Timestamp.now().normalize() - pd.DateOffset(years=3)
     سابقه = داده["first_date"].notna() & (داده["first_date"] <= تاریخ_مجاز)
 
