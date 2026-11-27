@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install required packages
-        run: pip install pandas numpy requests streamlit plotly
+        run: pip install "pandas>=2.2,<3.0" "numpy>=1.26,<3.0" requests streamlit plotly
       - name: Check Python syntax
         run: python -m compileall -q simple_app.py simple_data.py simple_metrics.py simple_ranking.py simple_database.py
       - name: Import app modules
