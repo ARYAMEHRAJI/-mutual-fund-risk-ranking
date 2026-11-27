@@ -8,7 +8,7 @@ import pandas as pd
 import simple_data
 import simple_database
 from simple_metrics import بازدهی_در_بازه, محاسبه_شاخص_ها
-from simple_ranking import رتبه_بندی, تعدیل_نوع_دارایی, انتخاب_صندوق_های_متنوع
+from simple_ranking import رتبه_بندی, تعدیل_نوع_دارایی, انتخاب_صندوق_های_متنوع, محاسبه_وزن_سبد
 
 
 class TestFundRanking(unittest.TestCase):
@@ -117,6 +117,36 @@ class TestFundRanking(unittest.TestCase):
         ])
         selected = انتخاب_صندوق_های_متنوع(data, "score", تعداد=5, پروفایل="Moderate")
         self.assertFalse({"1", "2", "7"}.intersection(set(selected["scheme_code"])))
+
+
+    def test_portfolio_weights_sum_to_100_for_all_profiles(self):
+        data = pd.DataFrame([
+            {"scheme_name": "Debt A", "fund_group": "Debt - Liquid"},
+            {"scheme_name": "Debt B", "fund_group": "Other - Debt Index"},
+            {"scheme_name": "Hybrid A", "fund_group": "Hybrid - Balanced"},
+            {"scheme_name": "Equity A", "fund_group": "Equity - Large Cap"},
+            {"scheme_name": "Equity B", "fund_group": "Other - Index"},
+            {"scheme_name": "Gold", "fund_group": "Other - Gold"}
+        ])
+        for profile in ["Conservative", "Moderate", "Growth", "Aggressive"]:
+            result = محاسبه_وزن_سبد(data, profile)
+            self.assertAlmostEqual(result["portfolio_weight"].sum(), 100.0, places=1)
+            self.assertTrue((result["portfolio_weight"] >= 0).all())
+
+    def test_missing_asset_types_are_redistributed(self):
+        data = pd.DataFrame([
+            {"scheme_name": "Equity A", "fund_group": "Equity - Large Cap"},
+            {"scheme_name": "Equity B", "fund_group": "Other - Index"},
+            {"scheme_name": "Gold", "fund_group": "Other - Gold"}
+        ])
+        result = محاسبه_وزن_سبد(data, "Growth")
+        self.assertAlmostEqual(result["portfolio_weight"].sum(), 100.0, places=1)
+        self.assertGreater(result.loc[2, "portfolio_weight"], 0)
+        self.assertAlmostEqual(
+            result.loc[0, "portfolio_weight"],
+            result.loc[1, "portfolio_weight"],
+            places=1
+        )
 
 
 class TestFundData(unittest.TestCase):
