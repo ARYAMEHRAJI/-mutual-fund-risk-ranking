@@ -469,9 +469,9 @@ if st.session_state.get("نمایش_نتیجه", False):
     st.markdown("---")
     تب_جدول, تب_منابع, تب_پایگاه = st.tabs(["جدول مقایسه", "اطلاعات داده‌ها", "پایگاه داده"])
     with تب_جدول:
-        ستون_های_جدول = ["scheme_name", "fund_group"] + list(نام_شاخص_ها.keys())
+        ستون_های_جدول = ["scheme_name", "fund_group", "data_coverage", پروفایل + "_score"] + list(نام_شاخص_ها.keys())
         جدول = نتیجه[[x for x in ستون_های_جدول if x in نتیجه.columns]].copy()
-        جدول = جدول.rename(columns={"scheme_name": "نام صندوق", "fund_group": "گروه صندوق", **{k: v[0] for k, v in نام_شاخص_ها.items()}})
+        جدول = جدول.rename(columns={"scheme_name": "نام صندوق", "fund_group": "گروه صندوق", "data_coverage": "پوشش داده (درصد)", پروفایل + "_score": "امتیاز تناسب", **{k: v[0] for k, v in نام_شاخص_ها.items()}})
         st.dataframe(جدول, use_container_width=True, hide_index=True)
         st.download_button(
             "دانلود جدول مقایسه (CSV)",
