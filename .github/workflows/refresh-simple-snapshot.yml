@@ -2,6 +2,10 @@ name: Refresh simple mutual fund data
 
 on:
   workflow_dispatch:
+  push:
+    branches: [group-relative-ranking]
+    paths-ignore:
+      - "data/latest_snapshot.json"
   schedule:
     - cron: "15 3 * * 1-5"
 
