@@ -275,9 +275,9 @@ if st.session_state.get("شروع_تحلیل", False):
                     نتیجه["scheme_code"].astype(str).tolist(), افق="3Y"
                 )
                 جدول_آلفا_بتا["scheme_code"] = (
-                    جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+                    جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
                 )
-                نتیجه = نتیجه.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
+                نتیجه = نتیجه.drop(columns=["alpha", "beta"], errors="ignore").merge(جدول_آلفا_بتا, on="scheme_code", how="left")
                 خطاهای_آلفا_بتا = [
                     str(ردیف["scheme_code"]) + ": " + str(ردیف["alpha_beta_error"])
                     for _, ردیف in جدول_آلفا_بتا.iterrows()
