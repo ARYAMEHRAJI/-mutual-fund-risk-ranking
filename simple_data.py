@@ -33,9 +33,9 @@ import pandas as pd
     "Debt - Gilt": ["gilt", "gilt fund"],
     "Debt - Gilt 10Y": ["gilt fund with 10 year constant duration", "gilt with 10 year constant duration"],
     "Debt - Floater": ["floater", "floater fund"],
-    "Hybrid - Conservative": ["conservative hybrid", "conservative hybrid fund"],
-    "Hybrid - Balanced": ["balanced hybrid", "balanced hybrid fund"],
-    "Hybrid - Aggressive": ["aggressive hybrid", "aggressive hybrid fund"],
+    "Hybrid - Conservative": ["conservative", "conservative hybrid", "conservative hybrid fund"],
+    "Hybrid - Balanced": ["balanced", "balanced hybrid", "balanced hybrid fund"],
+    "Hybrid - Aggressive": ["aggressive", "aggressive hybrid", "aggressive hybrid fund"],
     "Hybrid - Dynamic Allocation": ["dynamic asset allocation", "dynamic asset allocation or balanced advantage", "balanced advantage"],
     "Hybrid - Multi Asset": ["multi asset allocation", "multi asset allocation fund"],
     "Hybrid - Equity Savings": ["equity savings", "equity savings fund"],
@@ -49,7 +49,7 @@ def تمیزکردن_نام(مقدار):
     متن = " ".join(متن.split())
 
     # پیشوند گروه اصلی را حذف می‌کنیم تا تطبیق فقط با نام زیرگروه باشد.
-    for پیشوند in ["equity ", "debt ", "hybrid ", "equity scheme ", "debt scheme "]:
+    for پیشوند in ["equity scheme ", "debt scheme ", "equity ", "debt ", "hybrid "]:
         if متن.startswith(پیشوند):
             متن = متن[len(پیشوند):].strip()
     return متن
