@@ -48,7 +48,10 @@ def آماده_سازی():
                 sortino REAL,
                 alpha REAL,
                 beta REAL,
+                aum_cr REAL,
+                aum_as_of TEXT,
                 return_score REAL,
+                size_score REAL,
                 risk_score REAL,
                 quality_score REAL,
                 conservative_score REAL,
@@ -66,6 +69,9 @@ def آماده_سازی():
             "return_score": "REAL",
             "risk_score": "REAL",
             "quality_score": "REAL",
+            "aum_cr": "REAL",
+            "aum_as_of": "TEXT",
+            "size_score": "REAL",
             "conservative_score": "REAL",
             "moderate_score": "REAL",
             "growth_score": "REAL",
@@ -116,7 +122,7 @@ def ذخیره_نتایج(جدول):
                 مقدار = ردیف.get(ستون)
                 if pd.isna(مقدار):
                     مقدار = None
-                elif ستون == "metrics_as_of":
+                elif ستون in ["metrics_as_of", "aum_as_of"]:
                     مقدار = str(مقدار)
                 else:
                     مقدار = float(مقدار)
@@ -126,10 +132,11 @@ def ذخیره_نتایج(جدول):
                 INSERT INTO fund_metrics (
                     scheme_code, metrics_as_of, return_1w, return_1m, return_3m,
                     return_6m, return_1y, return_3y, volatility, max_drawdown,
-                    sharpe, sortino, alpha, beta, return_score, risk_score,
-                    quality_score, conservative_score, moderate_score,
-                    growth_score, aggressive_score, data_coverage
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    sharpe, sortino, alpha, beta, aum_cr, aum_as_of,
+                    return_score, risk_score, quality_score, size_score,
+                    conservative_score, moderate_score, growth_score,
+                    aggressive_score, data_coverage
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(scheme_code, metrics_as_of) DO UPDATE SET
                     return_1w=excluded.return_1w,
                     return_1m=excluded.return_1m,
@@ -143,9 +150,12 @@ def ذخیره_نتایج(جدول):
                     sortino=excluded.sortino,
                     alpha=COALESCE(excluded.alpha, fund_metrics.alpha),
                     beta=COALESCE(excluded.beta, fund_metrics.beta),
+                    aum_cr=excluded.aum_cr,
+                    aum_as_of=excluded.aum_as_of,
                     return_score=excluded.return_score,
                     risk_score=excluded.risk_score,
                     quality_score=excluded.quality_score,
+                    size_score=excluded.size_score,
                     conservative_score=excluded.conservative_score,
                     moderate_score=excluded.moderate_score,
                     growth_score=excluded.growth_score,
