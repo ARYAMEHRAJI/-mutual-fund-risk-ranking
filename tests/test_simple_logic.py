@@ -7,7 +7,7 @@ import pandas as pd
 
 import simple_data
 import simple_database
-from simple_metrics import بازدهی_در_بازه
+from simple_metrics import بازدهی_در_بازه, محاسبه_شاخص_ها
 from simple_ranking import رتبه_بندی
 
 
@@ -72,6 +72,55 @@ class TestFundData(unittest.TestCase):
             simple_data.پیدا_کردن_گروه("Balanced Hybrid Fund"),
             "Hybrid - Balanced"
         )
+
+    def test_fund_filters_keep_only_supported_open_direct_growth_schemes(self):
+        data = pd.DataFrame([
+            {
+                "scheme_code": "1", "scheme_name": "Large fund",
+                "is_active": True, "scheme_plan": "Direct",
+                "scheme_option": "Growth", "scheme_type": "Open Ended Schemes",
+                "first_date": "2020-01-01", "scheme_sub_category": "Large Cap Fund"
+            },
+            {
+                "scheme_code": "2", "scheme_name": "Large and Mid fund",
+                "is_active": True, "scheme_plan": "Direct",
+                "scheme_option": "Growth", "scheme_type": "Open Ended Schemes",
+                "first_date": "2020-01-01", "scheme_sub_category": "Large & Mid Cap Fund"
+            },
+            {
+                "scheme_code": "3", "scheme_name": "Liquid fund",
+                "is_active": True, "scheme_plan": "Direct",
+                "scheme_option": "Growth", "scheme_type": "Open Ended Schemes",
+                "first_date": "2020-01-01", "scheme_sub_category": "Liquid Fund"
+            },
+            {
+                "scheme_code": "4", "scheme_name": "Inactive fund",
+                "is_active": False, "scheme_plan": "Direct",
+                "scheme_option": "Growth", "scheme_type": "Open Ended Schemes",
+                "first_date": "2020-01-01", "scheme_sub_category": "Liquid Fund"
+            }
+        ])
+        selected = simple_data.انتخاب_صندوق_ها(data)
+        self.assertEqual(set(selected["scheme_code"]), {"1", "3"})
+        self.assertEqual(
+            selected.set_index("scheme_code").loc["3", "fund_group"],
+            "Debt - Liquid"
+        )
+
+    def test_metrics_calculate_three_year_returns_from_daily_nav(self):
+        dates = pd.date_range("2023-11-27", "2026-11-27", freq="B")
+        nav = 100 * (1.0005 ** np.arange(len(dates)))
+        data = pd.DataFrame({
+            "scheme_code": "900",
+            "scheme_name": "Sample Fund",
+            "date": dates,
+            "nav": nav
+        })
+        result = محاسبه_شاخص_ها(data)
+        self.assertEqual(len(result), 1)
+        self.assertTrue(pd.notna(result.loc[0, "return_1y"]))
+        self.assertTrue(pd.notna(result.loc[0, "return_3y"]))
+        self.assertGreater(result.loc[0, "volatility"], 0)
 
     def test_return_uses_nearby_dates_only(self):
         data = pd.DataFrame({
