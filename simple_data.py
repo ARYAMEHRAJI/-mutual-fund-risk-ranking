@@ -32,7 +32,14 @@ import pandas as pd
     "Debt - Banking and PSU": ["banking and psu", "banking and psu fund"],
     "Debt - Gilt": ["gilt", "gilt fund"],
     "Debt - Gilt 10Y": ["gilt fund with 10 year constant duration", "gilt with 10 year constant duration"],
-    "Debt - Floater": ["floater", "floater fund"]
+    "Debt - Floater": ["floater", "floater fund"],
+    "Hybrid - Conservative": ["conservative hybrid", "conservative hybrid fund"],
+    "Hybrid - Balanced": ["balanced hybrid", "balanced hybrid fund"],
+    "Hybrid - Aggressive": ["aggressive hybrid", "aggressive hybrid fund"],
+    "Hybrid - Dynamic Allocation": ["dynamic asset allocation", "dynamic asset allocation or balanced advantage", "balanced advantage"],
+    "Hybrid - Multi Asset": ["multi asset allocation", "multi asset allocation fund"],
+    "Hybrid - Equity Savings": ["equity savings", "equity savings fund"],
+    "Hybrid - Arbitrage": ["arbitrage", "arbitrage fund"]
 }
 
 
@@ -91,16 +98,15 @@ def انتخاب_صندوق_ها(صندوق_ها):
     سابقه = داده["first_date"].notna() & (داده["first_date"] <= تاریخ_مجاز)
 
     # نام ستون دسته‌بندی در نسخه‌های مختلف فایل ممکن است فرق کند.
-    ستون_دسته = None
+    دسته_ها = pd.Series(index=داده.index, dtype="object")
     for ستون in ["scheme_sub_category", "category_sub", "scheme_category", "category"]:
         if ستون in داده.columns:
-            ستون_دسته = ستون
-            break
+            دسته_ها = دسته_ها.combine_first(داده[ستون])
 
-    if ستون_دسته is None:
+    if دسته_ها.isna().all():
         raise ValueError("ستون دسته‌بندی صندوق در فایل منبع پیدا نشد.")
 
-    داده["fund_group"] = داده[ستون_دسته].apply(پیدا_کردن_گروه)
+    داده["fund_group"] = دسته_ها.apply(پیدا_کردن_گروه)
     انتخاب = فعال & مستقیم & رشد & باز & سابقه & داده["fund_group"].notna()
 
     نتیجه = داده[انتخاب].copy()
