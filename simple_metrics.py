@@ -5,6 +5,7 @@ import numpy as np
 import time
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 
 def بازدهی_در_بازه(جدول, تعداد_روز, تاریخ_پایان_مشترک, حداکثر_فاصله):
@@ -150,6 +151,24 @@ def تبدیل_پاسخ_آلفا_بتا(داده, کد, افق="3Y"):
     }
 
 
+
+# سرویس حداکثر ۵۰ درخواست در هر ۱۰ ثانیه می‌پذیرد.
+# ما کمی آهسته‌تر، یعنی ۴ درخواست در ثانیه، درخواست می‌فرستیم.
+قفل_درخواست = Lock()
+زمان_درخواست_بعدی = 0.0
+
+
+def رعایت_محدودیت_درخواست():
+    global زمان_درخواست_بعدی
+
+    with قفل_درخواست:
+        اکنون = time.monotonic()
+        صبر = max(0, زمان_درخواست_بعدی - اکنون)
+        if صبر:
+            time.sleep(صبر)
+        زمان_درخواست_بعدی = time.monotonic() + 0.25
+
+
 def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3Y"):
     """دریافت آلفا و بتا؛ خطای سرویس را از مقدار واقعی صفر جدا نگه می‌دارد."""
     آدرس_پایه = "https://api.charliealpha.in/v1/mf/metrics/"
@@ -159,10 +178,11 @@ def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3
         خطای_آخر = ""
         for تلاش in range(2):
             try:
+                رعایت_محدودیت_درخواست()
                 پاسخ = requests.get(
                     آدرس_پایه + کد,
                     headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36", "Referer": "https://api.charliealpha.in/", "Origin": "https://api.charliealpha.in"},
-                    timeout=12
+                    timeout=(5, 10)
                 )
                 if پاسخ.status_code == 429 or پاسخ.status_code >= 500:
                     خطای_آخر = "خطای موقت سرویس (HTTP " + str(پاسخ.status_code) + ")"
@@ -203,7 +223,8 @@ def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3
         if str(کد).strip() and str(کد).lower() != "nan"
     ))
 
-    with ThreadPoolExecutor(max_workers=3) as اجراکننده:
+    # ۱۲ کارگر هم‌زمان کار می‌کنند؛ محدودکننده بالا سرعت را کنترل می‌کند.
+    with ThreadPoolExecutor(max_workers=12) as اجراکننده:
         ردیف_ها = list(اجراکننده.map(دریافت_یک_صندوق, کدهای_یکتا))
 
     return pd.DataFrame(ردیف_ها)
