@@ -157,6 +157,24 @@ class TestFundRanking(unittest.TestCase):
         )
         self.assertAlmostEqual(result["portfolio_weight"].sum(), 100.0, places=1)
 
+    def test_portfolio_weight_cap_is_40_and_preserves_group_total_when_possible(self):
+        data = pd.DataFrame([
+            {"scheme_name": "Debt A", "fund_group": "Debt - Liquid", "volatility": 0.20},
+            {"scheme_name": "Debt B", "fund_group": "Debt - Corporate Bond", "volatility": 0.10},
+            {"scheme_name": "Debt C", "fund_group": "Other - Debt Index", "volatility": 0.01},
+            {"scheme_name": "Hybrid A", "fund_group": "Hybrid - Balanced", "volatility": 0.15},
+            {"scheme_name": "Hybrid B", "fund_group": "Hybrid - Conservative", "volatility": 0.18}
+        ])
+        result = محاسبه_وزن_سبد(data, "Conservative")
+        self.assertLessEqual(result["portfolio_weight"].max(), 40.0)
+        self.assertAlmostEqual(result["portfolio_weight"].sum(), 100.0, places=1)
+        debt_total = result.loc[
+            result["fund_group"].str.startswith("Debt") |
+            (result["fund_group"] == "Other - Debt Index"),
+            "portfolio_weight"
+        ].sum()
+        self.assertAlmostEqual(debt_total, 68.4, places=1)
+
     def test_missing_asset_types_are_redistributed(self):
         data = pd.DataFrame([
             {"scheme_name": "Equity A", "fund_group": "Equity - Large Cap"},
