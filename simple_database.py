@@ -22,8 +22,9 @@ def آماده_سازی():
         """)
         پایگاه.execute("""
             CREATE TABLE IF NOT EXISTS fund_metrics (
-                scheme_code TEXT PRIMARY KEY,
-                metrics_as_of TEXT,
+                metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scheme_code TEXT NOT NULL,
+                metrics_as_of TEXT NOT NULL,
                 return_1w REAL,
                 return_1m REAL,
                 return_3m REAL,
@@ -36,6 +37,7 @@ def آماده_سازی():
                 sortino REAL,
                 alpha REAL,
                 beta REAL,
+                UNIQUE (scheme_code, metrics_as_of),
                 FOREIGN KEY (scheme_code) REFERENCES funds(scheme_code)
             )
         """)
