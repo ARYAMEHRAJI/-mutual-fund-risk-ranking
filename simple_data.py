@@ -49,7 +49,7 @@ def تمیزکردن_نام(مقدار):
     متن = " ".join(متن.split())
 
     # پیشوند گروه اصلی را حذف می‌کنیم تا تطبیق فقط با نام زیرگروه باشد.
-    for پیشوند in ["equity ", "debt ", "equity scheme ", "debt scheme "]:
+    for پیشوند in ["equity ", "debt ", "hybrid ", "equity scheme ", "debt scheme "]:
         if متن.startswith(پیشوند):
             متن = متن[len(پیشوند):].strip()
     return متن
