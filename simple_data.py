@@ -8,8 +8,8 @@ import pandas as pd
 
 آدرس_اصلی = "https://api.tigzig.com/mf/v1"
 
-# فقط گروه‌هایی را می‌پذیریم که نام دسته‌بندی آن‌ها را دقیق می‌شناسیم.
-# این کار جلوی اشتباه گرفتن «Large & Mid Cap» با «Mid Cap» را می‌گیرد.
+# گروه‌های استاندارد را دقیق تشخیص می‌دهیم تا دسته‌هایی مثل Large & Mid Cap
+# به‌اشتباه با Mid Cap یکی نشوند. دسته‌های بخشی، موضوعی و کالایی نیز جدا هستند.
 گروه_ها = {
     "Equity - Large Cap": ["large cap", "large cap fund"],
     "Equity - Mid Cap": ["mid cap", "mid cap fund"],
@@ -59,16 +59,18 @@ def پیدا_کردن_گروه(نام_دسته, نام_صندوق=""):
     نام = تمیزکردن_نام(نام_دسته)
     نام_کامل = تمیزکردن_نام(str(نام_دسته) + " " + str(نام_صندوق))
 
-    # دسته‌های جدید بازار هند؛ ابتدا طلا و نقره را جدا می‌کنیم تا با ETF شاخصی اشتباه نشوند.
-    if "gold" in نام_کامل:
-        return "Other - Gold"
-    if "silver" in نام_کامل:
-        return "Other - Silver"
+    # ابتدا دسته‌های بخشی و موضوعی را از روی دسته رسمی تشخیص می‌دهیم.
     if "sectoral" in نام or "sector fund" in نام:
         return "Equity - Sectoral"
     if "thematic" in نام or "theme fund" in نام:
         return "Equity - Thematic"
-    if "index" in نام or "etf" in نام:
+
+    # طلا و نقره جدا از ETFهای شاخصی قرار می‌گیرند.
+    if "gold" in نام or "gold fund" in نام_کامل or "gold etf" in نام_کامل:
+        return "Other - Gold"
+    if "silver" in نام or "silver fund" in نام_کامل or "silver etf" in نام_کامل:
+        return "Other - Silver"
+    if "index" in نام or "etf" in نام or "index" in نام_کامل or "etf" in نام_کامل:
         return "Other - Index"
 
     for گروه, نام_های_مجاز in گروه_ها.items():
@@ -140,7 +142,7 @@ def انتخاب_صندوق_ها(صندوق_ها):
     if ستون_های_گم_شده:
         raise ValueError("ستون‌های ضروری در فایل منبع پیدا نشد: " + ", ".join(ستون_های_گم_شده))
 
-    # فقط صندوق‌های فعال، طرح مستقیم، نوع رشد و باز را انتخاب می‌کنیم.
+    # صندوق‌های فعال، باز و باسابقه را انتخاب می‌کنیم؛ ETFها می‌توانند طرح Other داشته باشند.
     فعال = داده["is_active"].astype(str).str.lower().isin(["true", "1", "yes"])
     مستقیم = داده["scheme_plan"].astype(str).str.lower().str.strip().eq("direct")
     رشد = داده["scheme_option"].astype(str).str.lower().str.strip().eq("growth")
