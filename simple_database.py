@@ -1,15 +1,24 @@
 # پایگاه داده ساده پروژه با SQLite
 
 import sqlite3
+from contextlib import contextmanager
 import pandas as pd
 
 مسیر_پایگاه = "funds_database.db"
 
 
+@contextmanager
 def اتصال():
     پایگاه = sqlite3.connect(مسیر_پایگاه, timeout=30)
     پایگاه.execute("PRAGMA foreign_keys = ON")
-    return پایگاه
+    try:
+        yield پایگاه
+        پایگاه.commit()
+    except Exception:
+        پایگاه.rollback()
+        raise
+    finally:
+        پایگاه.close()
 
 
 def آماده_سازی():
