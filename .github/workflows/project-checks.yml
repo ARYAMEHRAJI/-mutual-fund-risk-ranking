@@ -1,0 +1,24 @@
+name: Project checks
+
+on:
+  push:
+    branches: [group-relative-ranking]
+  pull_request:
+    branches: [group-relative-ranking]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install required packages
+        run: pip install pandas numpy requests
+      - name: Check Python syntax
+        run: python -m compileall -q simple_app.py simple_data.py simple_metrics.py simple_ranking.py simple_database.py
+      - name: Run logic tests
+        run: python -m unittest discover -s tests -v
