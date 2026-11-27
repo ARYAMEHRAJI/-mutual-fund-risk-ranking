@@ -435,8 +435,7 @@ if صفحه_فعال == "مقایسه صندوق‌ها":
         if امتیازهای_مقایسه:
             جدول_امتیازهای_مقایسه = pd.concat(امتیازهای_مقایسه, axis=1)
             نتیجه_مقایسه["comparison_score"] = جدول_امتیازهای_مقایسه.mean(axis=1)
-            نتيجة_مقایسه_پوشش = جدول_امتیازهای_مقایسه.notna().sum(axis=1)
-            نتیجه_مقایسه["comparison_coverage"] = نتيجه_مقایسه_پوشش
+            نتیجه_مقایسه["comparison_coverage"] = جدول_امتیازهای_مقایسه.notna().sum(axis=1)
             نتیجه_مقایسه.loc[
                 نتیجه_مقایسه["comparison_coverage"] < 3, "comparison_score"
             ] = float("nan")
