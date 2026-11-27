@@ -22,6 +22,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: هماهنگ شدن با آخرین نسخه مخزن
+        run: |
+          git fetch origin group-relative-ranking
+          git reset --hard origin/group-relative-ranking
+
       - name: آماده‌سازی پایتون
         uses: actions/setup-python@v5
         with:
