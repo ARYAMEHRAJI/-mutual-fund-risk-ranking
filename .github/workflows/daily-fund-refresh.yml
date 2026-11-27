@@ -30,6 +30,9 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Check Python syntax
+        run: python -m py_compile simple_app.py daily_update.py simple_data.py simple_metrics.py simple_ranking.py
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
