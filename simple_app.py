@@ -4,6 +4,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import html
 
 from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
 from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
@@ -366,10 +367,13 @@ if st.session_state.get("نمایش_نتیجه", False):
 
     for شماره, ردیف in نتیجه.iterrows():
         امتیاز_صندوق = ردیف.get(پروفایل + "_score", float("nan"))
+        نام_نمایشی = html.escape(str(ردیف["scheme_name"]))
+        گروه_نمایشی = html.escape(str(ردیف.get("fund_group", "نامشخص")))
         st.markdown(
             '<div class="fund-card"><span class="fund-rank">' + str(شماره + 1)
-            + '</span> <span class="fund-name">' + str(ردیف["scheme_name"])
-            + '</span><div class="fund-score">امتیاز تناسب: '
+            + '</span> <span class="fund-name">' + نام_نمایشی
+            + '</span><div class="small-note">گروه: ' + گروه_نمایشی
+            + '</div><div class="fund-score">امتیاز تناسب: '
             + (("{:.1f}".format(امتیاز_صندوق)) if pd.notna(امتیاز_صندوق) else "—")
             + ' از ۱۰۰</div></div>',
             unsafe_allow_html=True
