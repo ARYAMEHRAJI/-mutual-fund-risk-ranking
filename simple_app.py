@@ -595,9 +595,9 @@ if st.session_state.get("شروع_تحلیل", False):
                     نتیجه_کامل = pd.DataFrame(تصویر["results"])
                     if نتیجه_کامل.empty:
                         raise RuntimeError("فایل آخرین به‌روزرسانی خالی است.")
-                    ستون_رتبه = st.session_state["پروفایل"] + "_rank"
-                    نتیجه_قابل_رتبه = نتیجه_کامل.dropna(subset=[ستون_رتبه])
-                    نتیجه = نتیجه_قابل_رتبه.sort_values(ستون_رتبه).head(5).reset_index(drop=True)
+                    ستون_امتیاز = st.session_state["پروفایل"] + "_score"
+                    نتیجه_قابل_رتبه = نتیجه_کامل.dropna(subset=[ستون_امتیاز])
+                    نتیجه = نتیجه_قابل_رتبه.sort_values(ستون_امتیاز, ascending=False).head(5).reset_index(drop=True)
                     if نتیجه.empty:
                         raise RuntimeError("برای این پروفایل صندوق رتبه‌بندی‌شده‌ای در فایل روزانه وجود ندارد.")
                     تعداد_کل_دریافتی = int(تصویر.get("source_funds", 0))
@@ -706,13 +706,13 @@ if st.session_state.get("شروع_تحلیل", False):
                         except Exception as خطای_پایگاه:
                             st.session_state["خطای_پایگاه"] = str(خطای_پایگاه)
         
-                        ستون_رتبه = st.session_state["پروفایل"] + "_rank"
-                        نتیجه_قابل_رتبه = نتیجه_کامل.dropna(subset=[ستون_رتبه])
+                        ستون_امتیاز = st.session_state["پروفایل"] + "_score"
+                        نتیجه_قابل_رتبه = نتیجه_کامل.dropna(subset=[ستون_امتیاز])
                         if نتیجه_قابل_رتبه.empty:
                             raise RuntimeError("هیچ صندوقی حداقل شرایط لازم برای رتبه‌بندی را نداشت.")
         
                         نتیجه = (
-                            نتیجه_قابل_رتبه.sort_values(ستون_رتبه)
+                            نتیجه_قابل_رتبه.sort_values(ستون_امتیاز, ascending=False)
                             .head(5).reset_index(drop=True)
                         )
         
