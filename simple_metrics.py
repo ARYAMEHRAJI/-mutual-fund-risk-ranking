@@ -161,18 +161,13 @@ def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3
             try:
                 پاسخ = requests.get(
                     آدرس_پایه + کد,
-                    headers={
-                        "Accept": "application/json",
-                        "User-Agent": "Mozilla/5.0",
-                        "Referer": "https://charliealpha.in/",
-                        "Origin": "https://charliealpha.in"
-                    },
-                    timeout=30
+                    headers={"Accept": "application/json"},
+                    timeout=12
                 )
                 if پاسخ.status_code == 429 or پاسخ.status_code >= 500:
                     خطای_آخر = "خطای موقت سرویس (HTTP " + str(پاسخ.status_code) + ")"
                     if تلاش == 0:
-                        time.sleep(2)
+                        time.sleep(1)
                         continue
                 پاسخ.raise_for_status()
                 داده = پاسخ.json()
@@ -185,7 +180,12 @@ def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3
             except Exception as خطا:
                 خطای_آخر = str(خطا)
                 if تلاش == 0 and not isinstance(خطا, ValueError):
-                    time.sleep(1)
+                    # خطاهای دسترسی مانند 403 با تکرار درخواست برطرف نمی‌شوند.
+                    کد_وضعیت = getattr(getattr(خطا, "response", None), "status_code", None)
+                    if کد_وضعیت is None or کد_وضعیت == 429 or کد_وضعیت >= 500:
+                        time.sleep(1)
+                        continue
+                break
 
         return {
             "scheme_code": کد,
