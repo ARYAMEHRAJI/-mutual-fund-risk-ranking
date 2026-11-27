@@ -7,7 +7,7 @@ import pandas as pd
 
 from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav, دریافت_دارایی_تحت_مدیریت
 from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
-from simple_ranking import رتبه_بندی
+from simple_ranking import رتبه_بندی, انتخاب_صندوق_های_متنوع
 
 
 def main():
@@ -41,7 +41,7 @@ def main():
     نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
     کدهای_نهایی = []
     for پروفایل in ["Conservative", "Moderate", "Growth", "Aggressive"]:
-        بهترین = نتیجه.dropna(subset=[پروفایل + "_score"]).sort_values(پروفایل + "_score", ascending=False).head(5)
+        بهترین = انتخاب_صندوق_های_متنوع(نتیجه, پروفایل + "_score", تعداد=5, حداکثر_از_هر_گروه=2)
         کدهای_نهایی.extend(بهترین["scheme_code"].astype(str).tolist())
 
     کدهای_نهایی = list(dict.fromkeys(کدهای_نهایی))
@@ -62,7 +62,9 @@ def main():
         "source_funds": int(همه_صندوق_ها["scheme_code"].nunique()),
         "eligible_funds": int(واجد_شرایط["scheme_code"].nunique()),
         "analyzed_funds": int(نتیجه["scheme_code"].nunique()),
+        "funds_with_metrics": int(نتیجه["scheme_code"].nunique()),
         "funds_with_nav": int(nav["scheme_code"].nunique()),
+        "nav_funds_received": int(nav["scheme_code"].nunique()),
         "alpha_received": int(نتیجه["alpha"].notna().sum()),
         "beta_received": int(نتیجه["beta"].notna().sum()),
         "aum_available": int(نتیجه["aum_cr"].notna().sum()) if "aum_cr" in نتیجه.columns else 0,
