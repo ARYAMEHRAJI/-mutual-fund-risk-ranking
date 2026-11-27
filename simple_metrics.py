@@ -117,53 +117,82 @@ def محاسبه_شاخص_ها(اطلاعات_nav):
 
 
 def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3Y"):
+    """دریافت آلفا و بتا؛ خطای سرویس را از مقدار واقعی صفر جدا نگه می‌دارد."""
     آدرس_پایه = "https://api.charliealpha.in/v1/mf/metrics/"
 
     def دریافت_یک_صندوق(کد):
         کد = str(کد).strip().removesuffix(".0")
-        try:
-            پاسخ = requests.get(
-                آدرس_پایه + کد,
-                headers={
-                    "Accept": "application/json",
-                    "User-Agent": "Mozilla/5.0",
-                    "Referer": "https://charliealpha.in/",
-                    "Origin": "https://charliealpha.in"
-                },
-                timeout=25
-            )
-            پاسخ.raise_for_status()
-            داده = پاسخ.json()
-            شاخص_ها = داده.get("metrics", {}).get(افق, {})
-            آلفا = شاخص_ها.get("alpha")
-            بتا = شاخص_ها.get("beta")
+        خطای_آخر = ""
+        for تلاش in range(2):
+            try:
+                پاسخ = requests.get(
+                    آدرس_پایه + کد,
+                    headers={
+                        "Accept": "application/json",
+                        "User-Agent": "Mozilla/5.0",
+                        "Referer": "https://charliealpha.in/",
+                        "Origin": "https://charliealpha.in"
+                    },
+                    timeout=30
+                )
+                if پاسخ.status_code == 429 or پاسخ.status_code >= 500:
+                    خطای_آخر = "خطای موقت سرویس (HTTP " + str(پاسخ.status_code) + ")"
+                    if تلاش == 0:
+                        time.sleep(2)
+                        continue
+                پاسخ.raise_for_status()
+                داده = پاسخ.json()
 
-            return {
-                "scheme_code": کد,
-                "alpha": float(آلفا) / 100 if آلفا is not None else np.nan,
-                "beta": float(بتا) if بتا is not None else np.nan,
-                "alpha_beta_sample_count": (
-                    داده.get("sample_counts", {}).get("metrics", {}).get(افق, {}).get("alpha")
-                ),
-                "alpha_beta_benchmark": داده.get("benchmark", ""),
-                "alpha_beta_as_of": داده.get("data_as_of", ""),
-                "alpha_beta_source": "Charlie Alpha API",
-                "alpha_beta_error": ""
-            }
-        except Exception as خطا:
-            return {
-                "scheme_code": کد,
-                "alpha": np.nan,
-                "beta": np.nan,
-                "alpha_beta_sample_count": 0,
-                "alpha_beta_benchmark": "",
-                "alpha_beta_as_of": "",
-                "alpha_beta_source": "Charlie Alpha API",
-                "alpha_beta_error": str(خطا)[:220]
-            }
+                همه_افق_ها = داده.get("metrics") or {}
+                شاخص_ها = همه_افق_ها.get(افق)
+                if شاخص_ها is None:
+                    شاخص_ها = همه_افق_ها.get(str(افق).upper())
+                if شاخص_ها is None:
+                    شاخص_ها = همه_افق_ها.get(str(افق).lower(), {})
+
+                آلفا = شاخص_ها.get("alpha") if isinstance(شاخص_ها, dict) else None
+                بتا = شاخص_ها.get("beta") if isinstance(شاخص_ها, dict) else None
+                if آلفا is None and بتا is None:
+                    raise ValueError(
+                        "مقادیر alpha و beta در افق " + str(افق)
+                        + " در پاسخ API وجود نداشت؛ کلیدهای موجود: "
+                        + ", ".join(map(str, همه_افق_ها.keys()))
+                    )
+
+                شمارش_ها = (داده.get("sample_counts") or {}).get("metrics", {}).get(افق, {})
+                if not شمارش_ها:
+                    شمارش_ها = (داده.get("sample_counts") or {}).get("metrics", {}).get(str(افق).upper(), {})
+
+                return {
+                    "scheme_code": کد,
+                    # API آلفا را بر حسب واحد درصد برمی‌گرداند؛ در برنامه به نسبت اعشاری ذخیره می‌کنیم.
+                    "alpha": float(آلفا) / 100 if آلفا is not None else np.nan,
+                    "beta": float(بتا) if بتا is not None else np.nan,
+                    "alpha_beta_sample_count": شمارش_ها.get("alpha"),
+                    "alpha_beta_benchmark": داده.get("benchmark", ""),
+                    "alpha_beta_as_of": داده.get("data_as_of", ""),
+                    "alpha_beta_source": "Charlie Alpha API",
+                    "alpha_beta_error": ""
+                }
+            except Exception as خطا:
+                خطای_آخر = str(خطا)
+                if تلاش == 0 and not isinstance(خطا, ValueError):
+                    time.sleep(1)
+
+        return {
+            "scheme_code": کد,
+            "alpha": np.nan,
+            "beta": np.nan,
+            "alpha_beta_sample_count": 0,
+            "alpha_beta_benchmark": "",
+            "alpha_beta_as_of": "",
+            "alpha_beta_source": "Charlie Alpha API",
+            "alpha_beta_error": خطای_آخر[:300]
+        }
 
     کدهای_یکتا = list(dict.fromkeys(
         str(کد).strip().removesuffix(".0") for کد in کد_صندوق_ها
+        if str(کد).strip() and str(کد).lower() != "nan"
     ))
 
     with ThreadPoolExecutor(max_workers=3) as اجراکننده:
