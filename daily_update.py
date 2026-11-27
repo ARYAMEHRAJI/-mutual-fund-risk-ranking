@@ -38,26 +38,25 @@ def main():
         دارایی_تحت_مدیریت = pd.DataFrame(columns=["scheme_code", "aum_cr", "aum_as_of"])
     شاخص_ها = شاخص_ها.merge(دارایی_تحت_مدیریت, on="scheme_code", how="left")
 
+    # ابتدا رتبه‌بندی همه صندوق‌ها را انجام می‌دهیم.
     نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
-    کدهای_نهایی = []
-    for پروفایل in ["Conservative", "Moderate", "Growth", "Aggressive"]:
-        بهترین = انتخاب_صندوق_های_متنوع(نتیجه, پروفایل + "_score", تعداد=5, حداکثر_از_هر_گروه=2)
-        کدهای_نهایی.extend(بهترین["scheme_code"].astype(str).tolist())
 
-    کدهای_نهایی = list(dict.fromkeys(کدهای_نهایی))
-    print(f"دریافت آلفا و بتا برای {len(کدهای_نهایی)} صندوق منتخب...")
-    آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(کدهای_نهایی, افق="3Y")
-    print(
-        "Alpha received:", int(آلفا_بتا["alpha"].notna().sum()),
-        "/", len(آلفا_بتا),
-        "| Beta received:", int(آلفا_بتا["beta"].notna().sum()),
-        "/", len(آلفا_بتا)
-    )
+    # آلفا و بتا را برای همه صندوق‌های تحلیل‌شده می‌گیریم، نه فقط پنج پیشنهاد.
+    کدهای_همه_صندوق_ها = نتیجه["scheme_code"].astype(str).tolist()
+    print(f"دریافت آلفا و بتا برای همه {len(کدهای_همه_صندوق_ها)} صندوق...")
+    آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(کدهای_همه_صندوق_ها, افق="3Y")
+
+    تعداد_آلفا = int(آلفا_بتا["alpha"].notna().sum())
+    تعداد_بتا = int(آلفا_بتا["beta"].notna().sum())
+    print("صندوق‌های دارای آلفا:", تعداد_آلفا, "/", len(کدهای_همه_صندوق_ها))
+    print("صندوق‌های دارای بتا:", تعداد_بتا, "/", len(کدهای_همه_صندوق_ها))
+
     خطاهای_آلفا_بتا = آلفا_بتا[
         آلفا_بتا["alpha_beta_error"].astype(str).str.strip().ne("")
     ]
     for _, ردیف_خطا in خطاهای_آلفا_بتا.iterrows():
-        print("Alpha/Beta warning for", ردیف_خطا["scheme_code"], ":", ردیف_خطا["alpha_beta_error"])
+        print("هشدار آلفا/بتا برای", ردیف_خطا["scheme_code"], ":", ردیف_خطا["alpha_beta_error"])
+
     آلفا_بتا["scheme_code"] = آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
     نتیجه = نتیجه.merge(آلفا_بتا, on="scheme_code", how="left")
 
