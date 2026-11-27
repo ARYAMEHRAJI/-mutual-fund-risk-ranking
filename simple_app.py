@@ -493,6 +493,9 @@ if صفحه_فعال == "مقایسه صندوق‌ها":
             ["scheme_name", "fund_group"] +
             [ستون for ستون in نام_شاخص_های_مقایسه if ستون in نتیجه_مقایسه.columns]
         ].copy()
+        جدول_مقایسه["fund_group"] = جدول_مقایسه["fund_group"].map(
+            نام_فارسی_دسته_ها
+        ).fillna(جدول_مقایسه["fund_group"])
         جدول_مقایسه = جدول_مقایسه.rename(columns={
             "scheme_name": "نام صندوق",
             "fund_group": "دسته‌بندی",
@@ -934,6 +937,10 @@ if st.session_state.get("نمایش_نتیجه", False):
     with تب_جدول:
         ستون_های_جدول = ["scheme_name", "fund_group", "data_coverage", پروفایل + "_score"] + list(نام_شاخص_ها.keys())
         جدول = نتیجه[[x for x in ستون_های_جدول if x in نتیجه.columns]].copy()
+        if "fund_group" in جدول.columns:
+            جدول["fund_group"] = جدول["fund_group"].map(
+                نام_فارسی_گروه_ها
+            ).fillna(جدول["fund_group"])
         جدول = جدول.rename(columns={"scheme_name": "نام صندوق", "fund_group": "گروه صندوق", "data_coverage": "پوشش داده (درصد)", پروفایل + "_score": "امتیاز تناسب", **{k: v[0] for k, v in نام_شاخص_ها.items()}})
         st.dataframe(جدول, use_container_width=True, hide_index=True)
         st.download_button(
