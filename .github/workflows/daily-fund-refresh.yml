@@ -43,7 +43,8 @@ jobs:
           python - <<'PY'
           import pandas as pd
           from simple_data import پیدا_کردن_گروه
-          from simple_ranking import رتبه_بندی
+          from simple_ranking import رتبه_بندی, انتخاب_صندوق_های_متنوع
+          from simple_metrics import تبدیل_پاسخ_آلفا_بتا
 
           assert پیدا_کردن_گروه("Sectoral Fund") == "Equity - Sectoral"
           assert پیدا_کردن_گروه("Thematic Fund") == "Equity - Thematic"
@@ -70,7 +71,29 @@ jobs:
           assert "size_score" in ranked.columns
           assert ranked["size_score"].notna().all()
           assert ranked["Moderate_score"].notna().all()
-          print("Category and AUM ranking checks passed.")
+
+          # در انتخاب پنج‌تایی، تا حد امکان حداکثر دو گزینه از هر گروه می‌آید.
+          diverse_sample = pd.DataFrame({
+              "scheme_code": ["1", "2", "3", "4", "5", "6"],
+              "fund_group": ["A", "A", "A", "B", "C", "D"],
+              "Growth_score": [99, 98, 97, 96, 95, 94],
+          })
+          selected = انتخاب_صندوق_های_متنوع(diverse_sample, "Growth_score", 5, 2)
+          assert len(selected) == 5
+          assert selected["fund_group"].value_counts().max() <= 2
+
+          # ساختار واقعی پاسخ مستند Charlie API و تبدیل واحد آلفا.
+          alpha_beta = تبدیل_پاسخ_آلفا_بتا({
+              "benchmark": "TEST TRI",
+              "data_as_of": "2026-11-20",
+              "metrics": {"3Y": {"alpha": 1.25, "beta": 0.95}},
+              "sample_counts": {"metrics": {"3Y": {"alpha": 100}}}
+          }, "123456", "3Y")
+          assert abs(alpha_beta["alpha"] - 0.0125) < 1e-9
+          assert alpha_beta["beta"] == 0.95
+          assert alpha_beta["alpha_beta_error"] == ""
+
+          print("Category, AUM, diversification and Alpha/Beta checks passed.")
           PY
 
       - name: Download data and calculate rankings
