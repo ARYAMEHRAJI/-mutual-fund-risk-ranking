@@ -696,13 +696,14 @@ if st.session_state.get("شروع_تحلیل", False):
                     تعداد_تحلیل_شده = int(تصویر.get("analyzed_funds", len(نتیجه_کامل)))
                     تعداد_دارای_nav = int(تصویر.get("funds_with_nav", تعداد_تحلیل_شده))
                     تعداد_هر_گروه = تصویر.get("group_counts", {})
-                    تعداد_آلفا_کل = int(نتیجه["alpha"].notna().sum()) if "alpha" in نتیجه.columns else 0
-                    تعداد_بتا_کل = int(نتیجه["beta"].notna().sum()) if "beta" in نتیجه.columns else 0
+                    # آمار آلفا و بتا را از همه صندوق‌های فایل روزانه می‌خوانیم.
+                    تعداد_آلفا_کل = int(نتیجه_کامل["alpha"].notna().sum()) if "alpha" in نتیجه_کامل.columns else 0
+                    تعداد_بتا_کل = int(نتیجه_کامل["beta"].notna().sum()) if "beta" in نتیجه_کامل.columns else 0
                     خطاهای_آلفا_بتا = []
-                    if "alpha_beta_error" in نتیجه.columns:
+                    if "alpha_beta_error" in نتیجه_کامل.columns:
                         خطاهای_آلفا_بتا = [
                             str(ردیف["scheme_code"]) + ": " + str(ردیف["alpha_beta_error"])
-                            for _, ردیف in نتیجه.iterrows()
+                            for _, ردیف in نتیجه_کامل.iterrows()
                             if str(ردیف.get("alpha_beta_error", "")).strip()
                         ]
                     منابع_شاخص = [{
@@ -783,13 +784,27 @@ if st.session_state.get("شروع_تحلیل", False):
                             جدول_دارایی = pd.DataFrame(columns=["scheme_code", "aum_cr", "aum_as_of"])
                         شاخص_ها = شاخص_ها.merge(جدول_دارایی, on="scheme_code", how="left")
 
-                        # آلفا و بتا فقط برای پنج صندوق نهایی دریافت می‌شوند.
-                        شاخص_ها["alpha"] = float("nan")
-                        شاخص_ها["beta"] = float("nan")
-        
                         تعداد_تحلیل_شده = int(شاخص_ها["scheme_code"].nunique())
                         نتیجه_کامل = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
-        
+
+                        # آلفا و بتا را برای همه صندوق‌های تحلیل‌شده دریافت می‌کنیم.
+                        with st.spinner("در حال دریافت آلفا و بتای همه صندوق‌ها..."):
+                            جدول_آلفا_بتا = دریافت_آلفا_بتا_مقایسه_ذخیره_شده(
+                                tuple(نتیجه_کامل["scheme_code"].astype(str).tolist())
+                            )
+                        جدول_آلفا_بتا["scheme_code"] = (
+                            جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                        )
+                        نتیجه_کامل = نتیجه_کامل.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
+
+                        خطاهای_آلفا_بتا = [
+                            str(ردیف["scheme_code"]) + ": " + str(ردیف["alpha_beta_error"])
+                            for _, ردیف in جدول_آلفا_بتا.iterrows()
+                            if str(ردیف.get("alpha_beta_error", "")).strip()
+                        ]
+                        تعداد_آلفا_کل = int(نتیجه_کامل["alpha"].notna().sum())
+                        تعداد_بتا_کل = int(نتیجه_کامل["beta"].notna().sum())
+
                         # تمام صندوق‌های دارای شاخص، حتی اگر واجد شرایط رتبه‌بندی نباشند، ذخیره می‌شوند.
                         try:
                             ذخیره_نتایج(نتیجه_کامل)
@@ -806,31 +821,27 @@ if st.session_state.get("شروع_تحلیل", False):
                             نتیجه_قابل_رتبه, ستون_امتیاز, تعداد=5, حداکثر_از_هر_گروه=2
                         )
         
-                        # دریافت آلفا و بتا فقط برای پنج گزینه نهایی، برای جلوگیری از انتظار طولانی
-                        جدول_آلفا_بتا = دریافت_آلفا_بتا_مقایسه_ذخیره_شده(
-                            tuple(نتیجه["scheme_code"].astype(str).tolist())
-                        )
-                        جدول_آلفا_بتا["scheme_code"] = (
-                            جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
-                        )
-                        نتیجه = نتیجه.drop(columns=["alpha", "beta"], errors="ignore").merge(جدول_آلفا_بتا, on="scheme_code", how="left")
-                        خطاهای_آلفا_بتا = [
-                            str(ردیف["scheme_code"]) + ": " + str(ردیف["alpha_beta_error"])
-                            for _, ردیف in جدول_آلفا_بتا.iterrows()
-                            if str(ردیف.get("alpha_beta_error", "")).strip()
+                        # مقادیر پنج پیشنهاد را از جدول کامل برمی‌داریم.
+                        ستون_های_آلفا_بتا = [
+                            "scheme_code", "alpha", "beta", "alpha_beta_benchmark",
+                            "alpha_beta_as_of", "alpha_beta_source", "alpha_beta_error",
+                            "alpha_beta_sample_count"
                         ]
+                        نتیجه = نتیجه.merge(
+                            نتیجه_کامل[[ستون for ستون in ستون_های_آلفا_بتا if ستون in نتیجه_کامل.columns]],
+                            on="scheme_code",
+                            how="left"
+                        )
                         منابع_شاخص = [{
                             "source": "Charlie Alpha API",
                             "horizon": "3Y",
-                            "benchmark": "شاخص مرجع اختصاصی هر صندوق",
+                            "benchmark": "شاخص مرجع اعلام‌شده برای هر صندوق",
                             "data_as_of": (
-                                جدول_آلفا_بتا["alpha_beta_as_of"].dropna().iloc[0]
-                                if not جدول_آلفا_بتا["alpha_beta_as_of"].dropna().empty else "نامشخص"
+                                نتیجه_کامل["alpha_beta_as_of"].dropna().iloc[0]
+                                if "alpha_beta_as_of" in نتیجه_کامل.columns and not نتیجه_کامل["alpha_beta_as_of"].dropna().empty else "نامشخص"
                             )
                         }]
-                        تعداد_آلفا_کل = int(نتیجه["alpha"].notna().sum())
-                        تعداد_بتا_کل = int(نتیجه["beta"].notna().sum())
-        
+
                         # آلفا و بتای پنج صندوق نهایی نیز به رکوردهای قبلی اضافه می‌شوند.
                         try:
                             ذخیره_نتایج(نتیجه)
@@ -870,8 +881,8 @@ if st.session_state.get("نمایش_نتیجه", False):
     آمار_۳.metric("صندوق دارای شاخص معتبر", st.session_state.get("تعداد_بررسی_شده", "—"))
     آمار_۴, آمار_۵, آمار_۶ = st.columns(3)
     آمار_۴.metric("صندوق دارای داده NAV", st.session_state.get("تعداد_دارای_nav", "—"))
-    آمار_۵.metric("آلفای دریافت‌شده برای ۵ صندوق", st.session_state.get("تعداد_آلفا_کل", "—"))
-    آمار_۶.metric("بتای دریافت‌شده برای ۵ صندوق", st.session_state.get("تعداد_بتا_کل", "—"))
+    آمار_۵.metric("صندوق‌های دارای آلفا", st.session_state.get("تعداد_آلفا_کل", "—"))
+    آمار_۶.metric("صندوق‌های دارای بتا", st.session_state.get("تعداد_بتا_کل", "—"))
     st.caption("آخرین به‌روزرسانی خودکار داده‌ها: " + str(st.session_state.get("آخرین_به_روزرسانی", "در دسترس نیست")))
     تاریخ_گزارش_AUM = (
         نتیجه["aum_as_of"].dropna().max()
@@ -881,7 +892,7 @@ if st.session_state.get("نمایش_نتیجه", False):
     st.caption("تاریخ گزارش دارایی تحت مدیریت: " + str(تاریخ_گزارش_AUM) + " | Unit: ₹ Cr")
     st.caption(
         "آلفا برای " + str(تعداد_دارای_آلفا) + " و بتا برای " + str(تعداد_دارای_بتا)
-        + " صندوق نهایی دریافت شده است. صندوق‌ها در گروه‌های سهامی، درآمد ثابت، مختلط، بخشی، موضوعی، شاخصی، طلا و نقره "
+        + " صندوق از کل صندوق‌های تحلیل‌شده دارای داده معتبر هستند. صندوق‌ها در گروه‌های سهامی، درآمد ثابت، مختلط، بخشی، موضوعی، شاخصی، طلا و نقره "
         "به‌صورت جداگانه بررسی می‌شوند. امتیاز صدکی به‌تنهایی معیار ریسک مطلق نیست؛ نوع دارایی نیز با توجه "
         "به پروفایل کاربر در امتیاز نهایی اثر داده می‌شود."
     )
