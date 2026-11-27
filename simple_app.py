@@ -240,9 +240,13 @@ if st.session_state.get("شروع_تحلیل", False):
                 شاخص_ها = محاسبه_شاخص_ها(nav)
 
                 # گروه هر صندوق را به جدول شاخص ها اضافه می کنیم.
-                شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str)
+                شاخص_ها["scheme_code"] = (
+                    شاخص_ها["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                )
                 اطلاعات_گروه = صندوق_های_انتخابی[["scheme_code", "fund_group"]].copy()
-                اطلاعات_گروه["scheme_code"] = اطلاعات_گروه["scheme_code"].astype(str)
+                اطلاعات_گروه["scheme_code"] = (
+                    اطلاعات_گروه["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                )
                 شاخص_ها = شاخص_ها.merge(
                     اطلاعات_گروه.drop_duplicates("scheme_code"),
                     on="scheme_code",
@@ -254,7 +258,9 @@ if st.session_state.get("شروع_تحلیل", False):
                     شاخص_ها["scheme_code"].astype(str).tolist(),
                     افق="3Y"
                 )
-                جدول_آلفا_بتا["scheme_code"] = جدول_آلفا_بتا["scheme_code"].astype(str)
+                جدول_آلفا_بتا["scheme_code"] = (
+                    جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                )
                 شاخص_ها = شاخص_ها.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
 
                 خطاهای_آلفا_بتا = [
