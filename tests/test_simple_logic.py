@@ -113,9 +113,10 @@ class TestFundRanking(unittest.TestCase):
             {"scheme_code": "4", "scheme_name": "Liquid Fund", "fund_group": "Debt - Liquid", "score": 96},
             {"scheme_code": "5", "scheme_name": "Balanced Hybrid Fund", "fund_group": "Hybrid - Balanced", "score": 95},
             {"scheme_code": "6", "scheme_name": "Gold Fund", "fund_group": "Other - Gold", "score": 94},
+            {"scheme_code": "7", "scheme_name": "Edelweiss MSCI India Domestic & World Healthcare 45 Index Fund", "fund_group": "Other - Index", "score": 100},
         ])
         selected = انتخاب_صندوق_های_متنوع(data, "score", تعداد=5, پروفایل="Moderate")
-        self.assertFalse({"1", "2"}.issubset(set(selected["scheme_code"])))
+        self.assertFalse({"1", "2", "7"}.intersection(set(selected["scheme_code"])))
 
 
 class TestFundData(unittest.TestCase):
