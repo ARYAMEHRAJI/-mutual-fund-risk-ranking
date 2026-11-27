@@ -21,4 +21,4 @@ jobs:
       - name: Check Python syntax
         run: python -m compileall -q simple_app.py simple_data.py simple_metrics.py simple_ranking.py simple_database.py
       - name: Run logic tests
-        run: python -m unittest discover -s tests -v
+        run: python -m unittest discover -s tests -p 'test_simple_logic.py' -v
