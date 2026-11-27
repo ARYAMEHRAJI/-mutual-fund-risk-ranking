@@ -19,7 +19,7 @@ jobs:
       - name: Install required packages
         run: pip install "pandas>=2.2,<3.0" "numpy>=1.26,<3.0" requests streamlit plotly
       - name: Check Python syntax
-        run: python -m compileall -q simple_app.py simple_data.py simple_metrics.py simple_ranking.py simple_database.py
+        run: python -m compileall -q daily_update.py simple_app.py simple_data.py simple_metrics.py simple_ranking.py simple_database.py
       - name: Import app modules
         run: python -c "import simple_data, simple_metrics, simple_ranking, simple_database, simple_app"
       - name: Run Streamlit smoke test
