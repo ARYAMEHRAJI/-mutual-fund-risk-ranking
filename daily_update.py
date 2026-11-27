@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
+from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav, دریافت_دارایی_تحت_مدیریت
 from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
 from simple_ranking import رتبه_بندی
 
@@ -27,6 +27,12 @@ def main():
     گروه_ها = واجد_شرایط[["scheme_code", "fund_group"]].copy()
     گروه_ها["scheme_code"] = گروه_ها["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
     شاخص_ها = شاخص_ها.merge(گروه_ها.drop_duplicates("scheme_code"), on="scheme_code", how="left")
+
+    print("دریافت دارایی تحت مدیریت از گزارش روزانه AMFI...")
+    دارایی_تحت_مدیریت = دریافت_دارایی_تحت_مدیریت(
+        واجد_شرایط["scheme_code"].astype(str).tolist()
+    )
+    شاخص_ها = شاخص_ها.merge(دارایی_تحت_مدیریت, on="scheme_code", how="left")
 
     نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
     کدهای_نهایی = []
@@ -55,6 +61,8 @@ def main():
         "funds_with_nav": int(nav["scheme_code"].nunique()),
         "alpha_received": int(نتیجه["alpha"].notna().sum()),
         "beta_received": int(نتیجه["beta"].notna().sum()),
+        "aum_available": int(نتیجه["aum_cr"].notna().sum()) if "aum_cr" in نتیجه.columns else 0,
+        "aum_as_of": str(نتیجه["aum_as_of"].dropna().max()) if "aum_as_of" in نتیجه.columns and not نتیجه["aum_as_of"].dropna().empty else "نامشخص",
         "group_counts": {str(k): int(v) for k, v in آمار_گروه.items()},
         "results": json.loads(نتیجه.to_json(orient="records", force_ascii=False, date_format="iso"))
     }
