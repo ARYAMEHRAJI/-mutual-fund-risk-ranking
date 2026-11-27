@@ -136,6 +136,230 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+
+# منوی اصلی سامانه
+صفحه_فعال = st.radio(
+    "بخش موردنظر",
+    ["پیشنهاد هوشمند صندوق", "مقایسه صندوق‌ها"],
+    horizontal=True,
+    key="انتخاب_بخش_اصلی",
+    label_visibility="collapsed"
+)
+
+if صفحه_فعال == "مقایسه صندوق‌ها":
+    st.markdown('<div class="section-title">مقایسه صندوق‌ها</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-subtitle">ابتدا دسته‌بندی را انتخاب کن و سپس صندوق موردنظرت را مشخص کن. '
+        'امکان مقایسه حداکثر چهار صندوق وجود دارد.</div>',
+        unsafe_allow_html=True
+    )
+
+    import json
+    from pathlib import Path
+
+    مسیر_داده_مقایسه = Path("data/latest_snapshot.json")
+    if not مسیر_داده_مقایسه.exists():
+        st.warning("هنوز داده روزانه‌ای برای مقایسه در دسترس نیست. پس از اجرای موفق به‌روزرسانی روزانه، این بخش فعال می‌شود.")
+        st.stop()
+
+    try:
+        تصویر_مقایسه = json.loads(مسیر_داده_مقایسه.read_text(encoding="utf-8"))
+        همه_صندوق_های_مقایسه = pd.DataFrame(تصویر_مقایسه.get("results", []))
+    except Exception as خطای_خواندن:
+        st.error("خواندن اطلاعات صندوق‌ها با مشکل روبه‌رو شد: " + str(خطای_خواندن))
+        st.stop()
+
+    if همه_صندوق_های_مقایسه.empty or "fund_group" not in همه_صندوق_های_مقایسه.columns:
+        st.warning("اطلاعات دسته‌بندی صندوق‌ها در فایل داده موجود نیست.")
+        st.stop()
+
+    نام_فارسی_دسته_ها = {
+        "Equity - Large Cap": "سهامی - شرکت‌های بزرگ",
+        "Equity - Mid Cap": "سهامی - شرکت‌های متوسط",
+        "Equity - Small Cap": "سهامی - شرکت‌های کوچک",
+        "Equity - Flexi Cap": "سهامی - انعطاف‌پذیر",
+        "Equity - Multi Cap": "سهامی - چندبخشی",
+        "Equity - Focused": "سهامی - متمرکز",
+        "Debt - Overnight": "درآمد ثابت - شب‌شمار",
+        "Debt - Liquid": "درآمد ثابت - نقدشونده",
+        "Debt - Ultra Short Duration": "درآمد ثابت - سررسید بسیار کوتاه",
+        "Debt - Low Duration": "درآمد ثابت - سررسید کوتاه",
+        "Debt - Money Market": "درآمد ثابت - بازار پول",
+        "Debt - Short Duration": "درآمد ثابت - سررسید کوتاه‌مدت",
+        "Debt - Medium Duration": "درآمد ثابت - سررسید متوسط",
+        "Debt - Medium to Long Duration": "درآمد ثابت - سررسید متوسط تا بلند",
+        "Debt - Long Duration": "درآمد ثابت - سررسید بلند",
+        "Debt - Dynamic Bond": "درآمد ثابت - اوراق با مدیریت پویا",
+        "Debt - Corporate Bond": "درآمد ثابت - اوراق شرکتی",
+        "Debt - Credit Risk": "درآمد ثابت - ریسک اعتباری",
+        "Debt - Banking and PSU": "درآمد ثابت - بانکی و دولتی",
+        "Debt - Gilt": "درآمد ثابت - اوراق دولتی",
+        "Debt - Gilt 10Y": "درآمد ثابت - اوراق دولتی با سررسید ۱۰ سال",
+        "Debt - Floater": "درآمد ثابت - نرخ شناور",
+        "Hybrid - Conservative": "مختلط - محافظه‌کارانه",
+        "Hybrid - Balanced": "مختلط - متعادل",
+        "Hybrid - Aggressive": "مختلط - تهاجمی",
+        "Hybrid - Dynamic Allocation": "مختلط - تخصیص دارایی پویا",
+        "Hybrid - Multi Asset": "مختلط - چنددارایی",
+        "Hybrid - Equity Savings": "مختلط - پس‌انداز سهامی",
+        "Hybrid - Arbitrage": "مختلط - آربیتراژ"
+    }
+
+    گروه_های_موجود = sorted(
+        [گروه for گروه in همه_صندوق_های_مقایسه["fund_group"].dropna().unique()],
+        key=lambda گروه: نام_فارسی_دسته_ها.get(گروه, گروه)
+    )
+    گزینه_های_دسته = ["انتخاب دسته‌بندی"] + [
+        نام_فارسی_دسته_ها.get(گروه, گروه) for گروه in گروه_های_موجود
+    ]
+    نگاشت_دسته_به_انگلیسی = {
+        نام_فارسی_دسته_ها.get(گروه, گروه): گروه for گروه in گروه_های_موجود
+    }
+
+    انتخاب_های_مقایسه = []
+    ستون_های_انتخاب = st.columns(2)
+    for شماره in range(4):
+        with ستون_های_انتخاب[شماره % 2]:
+            with st.container(border=True):
+                st.markdown("**صندوق شماره " + str(شماره + 1) + "**")
+                دسته_انتخابی = st.selectbox(
+                    "دسته‌بندی صندوق",
+                    گزینه_های_دسته,
+                    key="مقایسه_دسته_" + str(شماره)
+                )
+                if دسته_انتخابی == "انتخاب دسته‌بندی":
+                    st.selectbox(
+                        "نام صندوق",
+                        ["ابتدا دسته‌بندی را انتخاب کن"],
+                        key="مقایسه_نام_خالی_" + str(شماره),
+                        disabled=True
+                    )
+                else:
+                    گروه_انگلیسی = نگاشت_دسته_به_انگلیسی[دسته_انتخابی]
+                    صندوق_های_این_دسته = همه_صندوق_های_مقایسه[
+                        همه_صندوق_های_مقایسه["fund_group"] == گروه_انگلیسی
+                    ].drop_duplicates("scheme_code")
+                    صندوق_های_این_دسته = صندوق_های_این_دسته.sort_values("scheme_name")
+                    نگاشت_نام_صندوق = {
+                        str(ردیف["scheme_code"]): str(ردیف["scheme_name"])
+                        for _, ردیف in صندوق_های_این_دسته.iterrows()
+                    }
+                    کد_انتخابی = st.selectbox(
+                        "نام صندوق",
+                        list(نگاشت_نام_صندوق.keys()),
+                        format_func=lambda کد, نگاشت=نگاشت_نام_صندوق: نگاشت.get(کد, کد),
+                        key="مقایسه_صندوق_" + str(شماره)
+                    )
+                    ردیف_صندوق = صندوق_های_این_دسته[
+                        صندوق_های_این_دسته["scheme_code"].astype(str) == str(کد_انتخابی)
+                    ].iloc[0]
+                    انتخاب_های_مقایسه.append(ردیف_صندوق.to_dict())
+
+    کدهای_انتخاب_شده = [str(ردیف["scheme_code"]) for ردیف in انتخاب_های_مقایسه]
+    if len(کدهای_انتخاب_شده) != len(set(کدهای_انتخاب_شده)):
+        st.warning("یک صندوق را بیش از یک بار انتخاب کرده‌ای. لطفاً صندوق‌های متفاوتی انتخاب کن.")
+        st.stop()
+
+    if انتخاب_های_مقایسه:
+        نتیجه_مقایسه = pd.DataFrame(انتخاب_های_مقایسه)
+        st.markdown("---")
+        st.markdown("**صندوق‌های انتخاب‌شده برای مقایسه**")
+        for _, ردیف in نتیجه_مقایسه.iterrows():
+            st.caption("• " + str(ردیف["scheme_name"]) + " — " +
+                       نام_فارسی_دسته_ها.get(str(ردیف["fund_group"]), str(ردیف["fund_group"])))
+
+        نام_شاخص_های_مقایسه = {
+            "return_1w": ("بازدهی ۱ هفته", "درصد", True),
+            "return_1m": ("بازدهی ۱ ماه", "درصد", True),
+            "return_3m": ("بازدهی ۳ ماه", "درصد", True),
+            "return_6m": ("بازدهی ۶ ماه", "درصد", True),
+            "return_1y": ("بازدهی ۱ سال", "درصد", True),
+            "return_3y": ("بازدهی ۳ سال", "درصد", True),
+            "volatility": ("نوسان‌پذیری", "درصد", True),
+            "max_drawdown": ("بیشترین افت سرمایه", "درصد", True),
+            "sharpe": ("نسبت شارپ", "", False),
+            "sortino": ("نسبت سورتینو", "", False),
+            "alpha": ("آلفا", "درصد", True),
+            "beta": ("بتا", "", False)
+        }
+
+        def رسم_نمودار_مقایسه(ستون):
+            عنوان, پسوند, درصدی = نام_شاخص_های_مقایسه[ستون]
+            داده_نمودار = نتیجه_مقایسه[["scheme_name", ستون]].copy()
+            داده_نمودار[ستون] = pd.to_numeric(داده_نمودار[ستون], errors="coerce")
+            داده_نمودار = داده_نمودار.dropna()
+            if داده_نمودار.empty:
+                st.info("برای این شاخص، داده‌ای برای صندوق‌های انتخاب‌شده موجود نیست.")
+                return
+            if درصدی:
+                داده_نمودار[ستون] = داده_نمودار[ستون] * 100
+            داده_نمودار = داده_نمودار.sort_values(ستون)
+            شکل_مقایسه = go.Figure()
+            شکل_مقایسه.add_trace(go.Bar(
+                x=داده_نمودار[ستون],
+                y=داده_نمودار["scheme_name"],
+                orientation="h",
+                marker=dict(color=["#a8b6d8", "#879bd0", "#6883c8", "#18a999"][-len(داده_نمودار):]),
+                text=[("{:,.2f}".format(مقدار) + پسوند)
+                      for مقدار in داده_نمودار[ستون]],
+                textposition="outside",
+                cliponaxis=False,
+                hovertemplate="<b>%{y}</b><br>" + عنوان + ": %{x:,.2f}" + پسوند + "<extra></extra>"
+            ))
+            شکل_مقایسه.update_layout(
+                height=max(300, 82 * len(داده_نمودار) + 80),
+                margin=dict(l=12, r=85, t=18, b=48),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Vazirmatn, sans-serif", size=12, color="#526078"),
+                showlegend=False,
+                bargap=.42,
+                xaxis=dict(title=عنوان + (" (" + پسوند + ")" if پسوند else ""),
+                           showgrid=True, gridcolor="#edf1f7", zerolinecolor="#dce3ef"),
+                yaxis=dict(title="", automargin=True, tickfont=dict(size=11, color="#293954"))
+            )
+            st.plotly_chart(شکل_مقایسه, use_container_width=True,
+                            config={"displayModeBar": False})
+
+        st.markdown("**نمودارهای مقایسه**")
+        st.caption("در هر نمودار، مقدار هر صندوق در کنار صندوق‌های انتخاب‌شده دیگر نمایش داده می‌شود.")
+        تب_مقایسه_بازدهی, تب_مقایسه_ریسک, تب_مقایسه_کیفیت, تب_مقایسه_بازار = st.tabs(
+            ["بازدهی", "ریسک", "کیفیت عملکرد", "آلفا و بتا"]
+        )
+        with تب_مقایسه_بازدهی:
+            for ستون in ["return_1w", "return_1m", "return_3m", "return_6m", "return_1y", "return_3y"]:
+                st.markdown("**" + نام_شاخص_های_مقایسه[ستون][0] + "**")
+                رسم_نمودار_مقایسه(ستون)
+        with تب_مقایسه_ریسک:
+            for ستون in ["volatility", "max_drawdown"]:
+                st.markdown("**" + نام_شاخص_های_مقایسه[ستون][0] + "**")
+                رسم_نمودار_مقایسه(ستون)
+        with تب_مقایسه_کیفیت:
+            for ستون in ["sharpe", "sortino"]:
+                st.markdown("**" + نام_شاخص_های_مقایسه[ستون][0] + "**")
+                رسم_نمودار_مقایسه(ستون)
+        with تب_مقایسه_بازار:
+            for ستون in ["alpha", "beta"]:
+                st.markdown("**" + نام_شاخص_های_مقایسه[ستون][0] + "**")
+                رسم_نمودار_مقایسه(ستون)
+
+        جدول_مقایسه = نتیجه_مقایسه[
+            ["scheme_name", "fund_group"] +
+            [ستون for ستون in نام_شاخص_های_مقایسه if ستون in نتیجه_مقایسه.columns]
+        ].copy()
+        جدول_مقایسه = جدول_مقایسه.rename(columns={
+            "scheme_name": "نام صندوق",
+            "fund_group": "دسته‌بندی",
+            **{ستون: مقدار[0] for ستون, مقدار in نام_شاخص_های_مقایسه.items()}
+        })
+        st.markdown("**جدول کامل مقایسه**")
+        st.dataframe(جدول_مقایسه, use_container_width=True, hide_index=True)
+        st.caption("تاریخ آخرین به‌روزرسانی داده‌ها: " + str(تصویر_مقایسه.get("updated_at_utc", "نامشخص")))
+    else:
+        st.info("برای شروع، حداقل یک دسته‌بندی و یک صندوق انتخاب کن.")
+
+    st.stop()
+
 سوال_ها = [
     {
         "سوال": "۱. اگر ارزش سرمایه‌ات در یک ماه ۱۵ درصد کم شود، چه واکنشی نشان می‌دهی؟",
@@ -281,110 +505,110 @@ if st.session_state.get("شروع_تحلیل", False):
                 else:
                     st.info("هنوز نسخه روزانه‌ای از داده‌ها ساخته نشده است؛ تحلیل مستقیم از منابع داده انجام می‌شود.")
                     st.session_state["آخرین_به_روزرسانی"] = "تحلیل مستقیم"
-                        with st.spinner("در حال دریافت داده‌ها و تحلیل صندوق‌ها..."):
-                            همه_صندوق_ها = دریافت_فهرست_ذخیره_شده()
-                            # صندوق‌های سهامی و درآمد ثابت با دسته‌بندی دقیق جدا می‌شوند.
-                            صندوق_های_واجد_شرایط = انتخاب_صندوق_ها(همه_صندوق_ها)
-                            صندوق_های_انتخابی = صندوق_های_واجد_شرایط.copy()
-            
-                            if صندوق_های_انتخابی.empty:
-                                raise RuntimeError("صندوق واجد شرایطی در گروه‌های تعریف‌شده پیدا نشد.")
-            
-                            تعداد_کل_دریافتی = int(همه_صندوق_ها["scheme_code"].nunique())
-                            تعداد_واجد_شرایط = int(صندوق_های_واجد_شرایط["scheme_code"].nunique())
-                            تعداد_هر_گروه = (
-                                صندوق_های_واجد_شرایط.groupby("fund_group")["scheme_code"]
-                                .nunique().to_dict()
+                    with st.spinner("در حال دریافت داده‌ها و تحلیل صندوق‌ها..."):
+                        همه_صندوق_ها = دریافت_فهرست_ذخیره_شده()
+                        # صندوق‌های سهامی و درآمد ثابت با دسته‌بندی دقیق جدا می‌شوند.
+                        صندوق_های_واجد_شرایط = انتخاب_صندوق_ها(همه_صندوق_ها)
+                        صندوق_های_انتخابی = صندوق_های_واجد_شرایط.copy()
+        
+                        if صندوق_های_انتخابی.empty:
+                            raise RuntimeError("صندوق واجد شرایطی در گروه‌های تعریف‌شده پیدا نشد.")
+        
+                        تعداد_کل_دریافتی = int(همه_صندوق_ها["scheme_code"].nunique())
+                        تعداد_واجد_شرایط = int(صندوق_های_واجد_شرایط["scheme_code"].nunique())
+                        تعداد_هر_گروه = (
+                            صندوق_های_واجد_شرایط.groupby("fund_group")["scheme_code"]
+                            .nunique().to_dict()
+                        )
+        
+                        nav = دریافت_nav_ذخیره_شده(
+                            tuple(صندوق_های_انتخابی["scheme_code"].astype(str))
+                        )
+                        تعداد_دارای_nav = int(nav["scheme_code"].nunique())
+                        شاخص_ها = محاسبه_شاخص_ها(nav)
+        
+                        if شاخص_ها.empty:
+                            raise RuntimeError("تاریخچه NAV معتبر و کافی برای محاسبه شاخص‌ها دریافت نشد.")
+        
+                        # گروه هر صندوق را به شاخص‌های محاسبه‌شده اضافه می‌کنیم.
+                        شاخص_ها["scheme_code"] = (
+                            شاخص_ها["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                        )
+                        اطلاعات_گروه = صندوق_های_انتخابی[["scheme_code", "fund_group"]].copy()
+                        اطلاعات_گروه["scheme_code"] = (
+                            اطلاعات_گروه["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                        )
+                        شاخص_ها = شاخص_ها.merge(
+                            اطلاعات_گروه.drop_duplicates("scheme_code"),
+                            on="scheme_code",
+                            how="left"
+                        )
+        
+                        # آلفا و بتا فقط برای پنج صندوق نهایی دریافت می‌شوند.
+                        شاخص_ها["alpha"] = float("nan")
+                        شاخص_ها["beta"] = float("nan")
+        
+                        تعداد_تحلیل_شده = int(شاخص_ها["scheme_code"].nunique())
+                        نتیجه_کامل = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
+        
+                        # تمام صندوق‌های دارای شاخص، حتی اگر واجد شرایط رتبه‌بندی نباشند، ذخیره می‌شوند.
+                        try:
+                            ذخیره_نتایج(نتیجه_کامل)
+                            st.session_state["خطای_پایگاه"] = ""
+                        except Exception as خطای_پایگاه:
+                            st.session_state["خطای_پایگاه"] = str(خطای_پایگاه)
+        
+                        ستون_رتبه = st.session_state["پروفایل"] + "_rank"
+                        نتیجه_قابل_رتبه = نتیجه_کامل.dropna(subset=[ستون_رتبه])
+                        if نتیجه_قابل_رتبه.empty:
+                            raise RuntimeError("هیچ صندوقی حداقل شرایط لازم برای رتبه‌بندی را نداشت.")
+        
+                        نتیجه = (
+                            نتیجه_قابل_رتبه.sort_values(ستون_رتبه)
+                            .head(5).reset_index(drop=True)
+                        )
+        
+                        # دریافت آلفا و بتا فقط برای پنج گزینه نهایی، برای جلوگیری از انتظار طولانی
+                        جدول_آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(
+                            نتیجه["scheme_code"].astype(str).tolist(), افق="3Y"
+                        )
+                        جدول_آلفا_بتا["scheme_code"] = (
+                            جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                        )
+                        نتیجه = نتیجه.drop(columns=["alpha", "beta"], errors="ignore").merge(جدول_آلفا_بتا, on="scheme_code", how="left")
+                        خطاهای_آلفا_بتا = [
+                            str(ردیف["scheme_code"]) + ": " + str(ردیف["alpha_beta_error"])
+                            for _, ردیف in جدول_آلفا_بتا.iterrows()
+                            if str(ردیف.get("alpha_beta_error", "")).strip()
+                        ]
+                        منابع_شاخص = [{
+                            "source": "Charlie Alpha API",
+                            "horizon": "3Y",
+                            "benchmark": "شاخص مرجع اختصاصی هر صندوق",
+                            "data_as_of": (
+                                جدول_آلفا_بتا["alpha_beta_as_of"].dropna().iloc[0]
+                                if not جدول_آلفا_بتا["alpha_beta_as_of"].dropna().empty else "نامشخص"
                             )
-            
-                            nav = دریافت_nav_ذخیره_شده(
-                                tuple(صندوق_های_انتخابی["scheme_code"].astype(str))
-                            )
-                            تعداد_دارای_nav = int(nav["scheme_code"].nunique())
-                            شاخص_ها = محاسبه_شاخص_ها(nav)
-            
-                            if شاخص_ها.empty:
-                                raise RuntimeError("تاریخچه NAV معتبر و کافی برای محاسبه شاخص‌ها دریافت نشد.")
-            
-                            # گروه هر صندوق را به شاخص‌های محاسبه‌شده اضافه می‌کنیم.
-                            شاخص_ها["scheme_code"] = (
-                                شاخص_ها["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
-                            )
-                            اطلاعات_گروه = صندوق_های_انتخابی[["scheme_code", "fund_group"]].copy()
-                            اطلاعات_گروه["scheme_code"] = (
-                                اطلاعات_گروه["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
-                            )
-                            شاخص_ها = شاخص_ها.merge(
-                                اطلاعات_گروه.drop_duplicates("scheme_code"),
-                                on="scheme_code",
-                                how="left"
-                            )
-            
-                            # آلفا و بتا فقط برای پنج صندوق نهایی دریافت می‌شوند.
-                            شاخص_ها["alpha"] = float("nan")
-                            شاخص_ها["beta"] = float("nan")
-            
-                            تعداد_تحلیل_شده = int(شاخص_ها["scheme_code"].nunique())
-                            نتیجه_کامل = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
-            
-                            # تمام صندوق‌های دارای شاخص، حتی اگر واجد شرایط رتبه‌بندی نباشند، ذخیره می‌شوند.
-                            try:
-                                ذخیره_نتایج(نتیجه_کامل)
-                                st.session_state["خطای_پایگاه"] = ""
-                            except Exception as خطای_پایگاه:
-                                st.session_state["خطای_پایگاه"] = str(خطای_پایگاه)
-            
-                            ستون_رتبه = st.session_state["پروفایل"] + "_rank"
-                            نتیجه_قابل_رتبه = نتیجه_کامل.dropna(subset=[ستون_رتبه])
-                            if نتیجه_قابل_رتبه.empty:
-                                raise RuntimeError("هیچ صندوقی حداقل شرایط لازم برای رتبه‌بندی را نداشت.")
-            
-                            نتیجه = (
-                                نتیجه_قابل_رتبه.sort_values(ستون_رتبه)
-                                .head(5).reset_index(drop=True)
-                            )
-            
-                            # دریافت آلفا و بتا فقط برای پنج گزینه نهایی، برای جلوگیری از انتظار طولانی
-                            جدول_آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(
-                                نتیجه["scheme_code"].astype(str).tolist(), افق="3Y"
-                            )
-                            جدول_آلفا_بتا["scheme_code"] = (
-                                جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
-                            )
-                            نتیجه = نتیجه.drop(columns=["alpha", "beta"], errors="ignore").merge(جدول_آلفا_بتا, on="scheme_code", how="left")
-                            خطاهای_آلفا_بتا = [
-                                str(ردیف["scheme_code"]) + ": " + str(ردیف["alpha_beta_error"])
-                                for _, ردیف in جدول_آلفا_بتا.iterrows()
-                                if str(ردیف.get("alpha_beta_error", "")).strip()
-                            ]
-                            منابع_شاخص = [{
-                                "source": "Charlie Alpha API",
-                                "horizon": "3Y",
-                                "benchmark": "شاخص مرجع اختصاصی هر صندوق",
-                                "data_as_of": (
-                                    جدول_آلفا_بتا["alpha_beta_as_of"].dropna().iloc[0]
-                                    if not جدول_آلفا_بتا["alpha_beta_as_of"].dropna().empty else "نامشخص"
-                                )
-                            }]
-                            تعداد_آلفا_کل = int(نتیجه["alpha"].notna().sum())
-                            تعداد_بتا_کل = int(نتیجه["beta"].notna().sum())
-            
-                            # آلفا و بتای پنج صندوق نهایی نیز به رکوردهای قبلی اضافه می‌شوند.
-                            try:
-                                ذخیره_نتایج(نتیجه)
-                            except Exception as خطای_پایگاه:
-                                st.session_state["خطای_پایگاه"] = str(خطای_پایگاه)
-                            st.session_state["نتیجه_صندوق"] = نتیجه
-                            st.session_state["خطاهای_آلفا_بتا"] = خطاهای_آلفا_بتا
-                            st.session_state["منابع_شاخص"] = منابع_شاخص
-                            st.session_state["تعداد_کل_دریافتی"] = تعداد_کل_دریافتی
-                            st.session_state["تعداد_واجد_شرایط"] = تعداد_واجد_شرایط
-                            st.session_state["تعداد_هر_گروه"] = تعداد_هر_گروه
-                            st.session_state["تعداد_بررسی_شده"] = تعداد_تحلیل_شده
-                            st.session_state["تعداد_دارای_nav"] = تعداد_دارای_nav
-                            st.session_state["تعداد_آلفا_کل"] = تعداد_آلفا_کل
-                            st.session_state["تعداد_بتا_کل"] = تعداد_بتا_کل
-                            st.session_state["نمایش_نتیجه"] = True
+                        }]
+                        تعداد_آلفا_کل = int(نتیجه["alpha"].notna().sum())
+                        تعداد_بتا_کل = int(نتیجه["beta"].notna().sum())
+        
+                        # آلفا و بتای پنج صندوق نهایی نیز به رکوردهای قبلی اضافه می‌شوند.
+                        try:
+                            ذخیره_نتایج(نتیجه)
+                        except Exception as خطای_پایگاه:
+                            st.session_state["خطای_پایگاه"] = str(خطای_پایگاه)
+                        st.session_state["نتیجه_صندوق"] = نتیجه
+                        st.session_state["خطاهای_آلفا_بتا"] = خطاهای_آلفا_بتا
+                        st.session_state["منابع_شاخص"] = منابع_شاخص
+                        st.session_state["تعداد_کل_دریافتی"] = تعداد_کل_دریافتی
+                        st.session_state["تعداد_واجد_شرایط"] = تعداد_واجد_شرایط
+                        st.session_state["تعداد_هر_گروه"] = تعداد_هر_گروه
+                        st.session_state["تعداد_بررسی_شده"] = تعداد_تحلیل_شده
+                        st.session_state["تعداد_دارای_nav"] = تعداد_دارای_nav
+                        st.session_state["تعداد_آلفا_کل"] = تعداد_آلفا_کل
+                        st.session_state["تعداد_بتا_کل"] = تعداد_بتا_کل
+                        st.session_state["نمایش_نتیجه"] = True
                     except Exception:
                         raise
         except Exception as خطا:
