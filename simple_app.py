@@ -10,6 +10,16 @@ from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_ب�
 from simple_ranking import رتبه_بندی
 from simple_database import ذخیره_نتایج, آمار_پایگاه_داده
 
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def دریافت_فهرست_ذخیره_شده():
+    return دریافت_صندوق_ها()
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def دریافت_nav_ذخیره_شده(کدها):
+    return دریافت_nav(list(کدها))
+
 st.set_page_config(
     page_title="صندوق‌یار | پیشنهاد هوشمند صندوق",
     page_icon="📈",
@@ -210,7 +220,7 @@ if st.session_state.get("شروع_تحلیل", False):
     if st.button("پیدا کردن ۵ صندوق مناسب من", type="primary", use_container_width=True):
         try:
             with st.spinner("در حال دریافت داده‌ها و تحلیل صندوق‌ها..."):
-                همه_صندوق_ها = دریافت_صندوق_ها()
+                همه_صندوق_ها = دریافت_فهرست_ذخیره_شده()
                 گروه_ها = ["Large Cap", "Mid Cap", "Small Cap", "Flexi Cap", "Multi Cap", "Focused"]
 
                 # ابتدا تمام صندوق های واجد شرایط را در شش گروه جدا می کنیم.
@@ -235,10 +245,6 @@ if st.session_state.get("شروع_تحلیل", False):
                     raise RuntimeError("صندوق واجد شرایطی در داده دریافتی پیدا نشد.")
 
                 تعداد_کل_دریافتی = int(همه_صندوق_ها["scheme_code"].nunique())
-
-                @st.cache_data(ttl=3600, show_spinner=False)
-                def دریافت_nav_ذخیره_شده(کدها):
-                    return دریافت_nav(list(کدها))
 
                 nav = دریافت_nav_ذخیره_شده(tuple(صندوق_های_انتخابی["scheme_code"].astype(str)))
                 تعداد_دارای_nav = int(nav["scheme_code"].nunique())
