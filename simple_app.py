@@ -267,6 +267,17 @@ if st.session_state.get("شروع_تحلیل", False):
                     except Exception as خطای_پایگاه:
                         st.session_state["خطای_پایگاه"] = str(خطای_پایگاه)
                     st.session_state["آخرین_به_روزرسانی"] = تصویر.get("updated_at_utc", "نامشخص")
+                    st.session_state["نتیجه_صندوق"] = نتیجه
+                    st.session_state["خطاهای_آلفا_بتا"] = خطاهای_آلفا_بتا
+                    st.session_state["منابع_شاخص"] = منابع_شاخص
+                    st.session_state["تعداد_کل_دریافتی"] = تعداد_کل_دریافتی
+                    st.session_state["تعداد_واجد_شرایط"] = تعداد_واجد_شرایط
+                    st.session_state["تعداد_هر_گروه"] = تعداد_هر_گروه
+                    st.session_state["تعداد_بررسی_شده"] = تعداد_تحلیل_شده
+                    st.session_state["تعداد_دارای_nav"] = تعداد_دارای_nav
+                    st.session_state["تعداد_آلفا_کل"] = تعداد_آلفا_کل
+                    st.session_state["تعداد_بتا_کل"] = تعداد_بتا_کل
+                    st.session_state["نمایش_نتیجه"] = True
                 else:
                     st.info("هنوز نسخه روزانه‌ای از داده‌ها ساخته نشده است؛ تحلیل مستقیم از منابع داده انجام می‌شود.")
                     st.session_state["آخرین_به_روزرسانی"] = "تحلیل مستقیم"
