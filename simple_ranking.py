@@ -132,3 +132,37 @@ def رتبه_بندی(جدول, ستون_گروه="fund_group"):
         )
 
     return نتیجه.sort_values("Moderate_rank", na_position="last").reset_index(drop=True)
+
+
+
+def انتخاب_صندوق_های_متنوع(جدول, ستون_امتیاز, تعداد=5, حداکثر_از_هر_گروه=2):
+    """پنج صندوق با امتیاز بالا انتخاب می‌کند و تا حد ممکن تنوع گروهی را حفظ می‌کند."""
+    if جدول.empty or ستون_امتیاز not in جدول.columns:
+        return جدول.head(0).copy()
+
+    داده = جدول.dropna(subset=[ستون_امتیاز]).copy()
+    داده = داده.sort_values(ستون_امتیاز, ascending=False, kind="mergesort")
+    if "fund_group" not in داده.columns:
+        return داده.head(تعداد).reset_index(drop=True)
+
+    انتخاب = []
+    شمارش = {}
+    باقی = []
+    for _, ردیف in داده.iterrows():
+        گروه = str(ردیف.get("fund_group", "نامشخص"))
+        if شمارش.get(گروه, 0) < حداکثر_از_هر_گروه and len(انتخاب) < تعداد:
+            انتخاب.append(ردیف)
+            شمارش[گروه] = شمارش.get(گروه, 0) + 1
+        else:
+            باقی.append(ردیف)
+
+    # اگر تعداد گروه‌های موجود برای رعایت سقف کافی نبود، فهرست را تا تعداد درخواستی کامل می‌کنیم.
+    if len(انتخاب) < تعداد:
+        for ردیف in باقی:
+            انتخاب.append(ردیف)
+            if len(انتخاب) == تعداد:
+                break
+
+    if not انتخاب:
+        return داده.head(تعداد).reset_index(drop=True)
+    return pd.DataFrame(انتخاب).reset_index(drop=True)
