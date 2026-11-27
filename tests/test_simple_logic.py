@@ -8,7 +8,7 @@ import pandas as pd
 import simple_data
 import simple_database
 from simple_metrics import بازدهی_در_بازه, محاسبه_شاخص_ها
-from simple_ranking import رتبه_بندی, تعدیل_نوع_دارایی
+from simple_ranking import رتبه_بندی, تعدیل_نوع_دارایی, انتخاب_صندوق_های_متنوع
 
 
 class TestFundRanking(unittest.TestCase):
@@ -59,6 +59,63 @@ class TestFundRanking(unittest.TestCase):
         missing = result[result["scheme_code"] == "Debt - Liquid0"].iloc[0]
         self.assertFalse(bool(missing["eligible_for_ranking"]))
         self.assertTrue(pd.isna(missing["Conservative_rank"]))
+
+
+
+    def test_diversified_recommendations_for_all_profiles(self):
+        rows = []
+        groups = [
+            ("Debt - Liquid", "Liquid Fund"),
+            ("Debt - Corporate Bond", "Corporate Bond Fund"),
+            ("Hybrid - Balanced", "Balanced Hybrid Fund"),
+            ("Hybrid - Dynamic Allocation", "Balanced Advantage Fund"),
+            ("Equity - Large Cap", "Large Cap Fund"),
+            ("Equity - Flexi Cap", "Flexi Cap Fund"),
+            ("Equity - Sectoral", "Healthcare Sectoral Fund"),
+            ("Equity - Thematic", "Healthcare Pharma Thematic Fund"),
+            ("Other - Gold", "Gold ETF"),
+            ("Other - Silver", "Silver ETF"),
+        ]
+        for i, (group, name) in enumerate(groups):
+            rows.append({
+                "scheme_code": str(i), "scheme_name": name,
+                "fund_group": group, "score": 95 - i
+            })
+        data = pd.DataFrame(rows)
+
+        for profile in ["Conservative", "Moderate", "Growth", "Aggressive"]:
+            selected = انتخاب_صندوق_های_متنوع(
+                data, "score", تعداد=5, حداکثر_از_هر_گروه=1, پروفایل=profile
+            )
+            self.assertEqual(len(selected), 5)
+            self.assertLessEqual(selected["fund_group"].value_counts().max(), 1)
+            sector_count = selected["fund_group"].isin(
+                ["Equity - Sectoral", "Equity - Thematic"]
+            ).sum()
+            self.assertLessEqual(sector_count, 1)
+            if profile == "Conservative":
+                self.assertEqual(sector_count, 0)
+            self.assertLessEqual(
+                selected["fund_group"].apply(
+                    lambda g: "debt" if g.startswith("Debt") or g == "Other - Debt Index"
+                    else "hybrid" if g.startswith("Hybrid")
+                    else "equity" if g.startswith("Equity") or g == "Other - Index"
+                    else "alternative"
+                ).value_counts().max(),
+                3
+            )
+
+    def test_healthcare_concentration_is_limited(self):
+        data = pd.DataFrame([
+            {"scheme_code": "1", "scheme_name": "Healthcare Fund A", "fund_group": "Equity - Sectoral", "score": 99},
+            {"scheme_code": "2", "scheme_name": "Pharma Healthcare Fund B", "fund_group": "Equity - Thematic", "score": 98},
+            {"scheme_code": "3", "scheme_name": "Large Cap Fund", "fund_group": "Equity - Large Cap", "score": 97},
+            {"scheme_code": "4", "scheme_name": "Liquid Fund", "fund_group": "Debt - Liquid", "score": 96},
+            {"scheme_code": "5", "scheme_name": "Balanced Hybrid Fund", "fund_group": "Hybrid - Balanced", "score": 95},
+            {"scheme_code": "6", "scheme_name": "Gold Fund", "fund_group": "Other - Gold", "score": 94},
+        ])
+        selected = انتخاب_صندوق_های_متنوع(data, "score", تعداد=5, پروفایل="Moderate")
+        self.assertFalse({"1", "2"}.issubset(set(selected["scheme_code"])))
 
 
 class TestFundData(unittest.TestCase):

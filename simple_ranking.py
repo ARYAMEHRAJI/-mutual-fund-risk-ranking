@@ -167,34 +167,133 @@ def رتبه_بندی(جدول, ستون_گروه="fund_group"):
 
 
 
-def انتخاب_صندوق_های_متنوع(جدول, ستون_امتیاز, تعداد=5, حداکثر_از_هر_گروه=2):
-    """پنج صندوق با امتیاز بالا انتخاب می‌کند و تا حد ممکن تنوع گروهی را حفظ می‌کند."""
+def دسته_دارایی(گروه):
+    """گروه‌های اصلی دارایی را برای متنوع‌سازی مشخص می‌کند."""
+    گروه = str(گروه)
+    if گروه.startswith("Debt") or گروه == "Other - Debt Index":
+        return "debt"
+    if گروه.startswith("Hybrid"):
+        return "hybrid"
+    if گروه.startswith("Equity") or گروه == "Other - Index":
+        return "equity"
+    if گروه in ["Other - Gold", "Other - Silver"]:
+        return "alternative"
+    return "other"
+
+
+def صنعت_صندوق(نام):
+    """برای جلوگیری از پیشنهاد چند صندوق از یک صنعت، کلیدواژه‌های رایج را می‌سنجد."""
+    نام = str(نام).lower()
+    صنایع = {
+        "healthcare": ["health", "healthcare", "pharma", "medical"],
+        "banking": ["bank", "banking", "financial"],
+        "technology": ["technology", "tech", "it fund", "software"],
+        "energy": ["energy", "power", "oil", "gas"],
+        "infrastructure": ["infrastructure", "construction"],
+        "consumption": ["consumption", "consumer", "fmcg"],
+        "auto": ["automobile", "auto"],
+        "real_estate": ["realty", "real estate"],
+        "metal": ["metal", "mining", "commodity"]
+    }
+    for صنعت, واژه_ها in صنایع.items():
+        if any(واژه in نام for واژه in واژه_ها):
+            return صنعت
+    return ""
+
+
+def انتخاب_صندوق_های_متنوع(
+    جدول, ستون_امتیاز, تعداد=5, حداکثر_از_هر_گروه=1, پروفایل="Moderate"
+):
+    """
+    انتخاب صندوق با حفظ تنوع دارایی و صنعت.
+    امتیازها همچنان درون هر گروه محاسبه می‌شوند؛ این تابع فقط ترکیب پیشنهادها را متنوع می‌کند.
+    """
     if جدول.empty or ستون_امتیاز not in جدول.columns:
         return جدول.head(0).copy()
 
     داده = جدول.dropna(subset=[ستون_امتیاز]).copy()
     داده = داده.sort_values(ستون_امتیاز, ascending=False, kind="mergesort")
-    if "fund_group" not in داده.columns:
-        return داده.head(تعداد).reset_index(drop=True)
+    if داده.empty:
+        return داده
 
+    سقف_دارایی = {
+        "Conservative": {"debt": 3, "hybrid": 2, "equity": 1, "alternative": 1, "other": 1},
+        "Moderate": {"debt": 2, "hybrid": 2, "equity": 2, "alternative": 1, "other": 1},
+        "Growth": {"debt": 1, "hybrid": 2, "equity": 3, "alternative": 1, "other": 1},
+        "Aggressive": {"debt": 1, "hybrid": 1, "equity": 3, "alternative": 2, "other": 1}
+    }
+    سقف = سقف_دارایی.get(پروفایل, سقف_دارایی["Moderate"])
     انتخاب = []
-    شمارش = {}
-    باقی = []
-    for _, ردیف in داده.iterrows():
+    شمارش_دارایی = {}
+    شمارش_گروه = {}
+    شمارش_صنعت = {}
+    تعداد_بخشی = 0
+
+    def افزودن(ردیف, محدودیت_صنعت, محدودیت_گروه, محدودیت_دارایی):
+        nonlocal تعداد_بخشی
         گروه = str(ردیف.get("fund_group", "نامشخص"))
-        if شمارش.get(گروه, 0) < حداکثر_از_هر_گروه and len(انتخاب) < تعداد:
-            انتخاب.append(ردیف)
-            شمارش[گروه] = شمارش.get(گروه, 0) + 1
-        else:
-            باقی.append(ردیف)
+        دارایی = دسته_دارایی(گروه)
+        نام = ردیف.get("scheme_name", "")
+        صنعت = صنعت_صندوق(نام)
+        بخشی = گروه in ["Equity - Sectoral", "Equity - Thematic"]
 
-    # اگر تعداد گروه‌های موجود برای رعایت سقف کافی نبود، فهرست را تا تعداد درخواستی کامل می‌کنیم.
+        if محدودیت_دارایی and شمارش_دارایی.get(دارایی, 0) >= سقف.get(دارایی, 1):
+            return False
+        if محدودیت_گروه and شمارش_گروه.get(گروه, 0) >= حداکثر_از_هر_گروه:
+            return False
+        if محدودیت_صنعت and صنعت and شمارش_صنعت.get(صنعت, 0) >= 1:
+            return False
+        # صندوق بخشی و موضوعی سرمایه را در یک صنعت متمرکز می‌کنند؛
+        # در پیشنهاد محافظه‌کارانه وارد نمی‌شوند و در سایر پروفایل‌ها حداکثر یکی هستند.
+        if بخشی and (پروفایل == "Conservative" or تعداد_بخشی >= 1):
+            return False
+
+        انتخاب.append(ردیف)
+        شمارش_دارایی[دارایی] = شمارش_دارایی.get(دارایی, 0) + 1
+        شمارش_گروه[گروه] = شمارش_گروه.get(گروه, 0) + 1
+        if صنعت:
+            شمارش_صنعت[صنعت] = شمارش_صنعت.get(صنعت, 0) + 1
+        if بخشی:
+            تعداد_بخشی += 1
+        return True
+
+    # ابتدا همه محدودیت‌ها رعایت می‌شوند.
+    for _, ردیف in داده.iterrows():
+        if len(انتخاب) >= تعداد:
+            break
+        افزودن(ردیف, True, True, True)
+
+    # اگر تعداد کافی نبود، فقط محدودیت صنعت و سپس گروه کمی آسان‌تر می‌شود.
     if len(انتخاب) < تعداد:
-        for ردیف in باقی:
-            انتخاب.append(ردیف)
-            if len(انتخاب) == تعداد:
+        انتخاب_شده = {str(ردیف.get("scheme_code", "")) for ردیف in انتخاب}
+        for _, ردیف in داده.iterrows():
+            if len(انتخاب) >= تعداد:
                 break
+            if str(ردیف.get("scheme_code", "")) in انتخاب_شده:
+                continue
+            if افزودن(ردیف, False, True, True):
+                انتخاب_شده.add(str(ردیف.get("scheme_code", "")))
 
-    if not انتخاب:
-        return داده.head(تعداد).reset_index(drop=True)
+    if len(انتخاب) < تعداد:
+        انتخاب_شده = {str(ردیف.get("scheme_code", "")) for ردیف in انتخاب}
+        سقف_قدیمی = حداکثر_از_هر_گروه
+        حداکثر_از_هر_گروه = max(2, سقف_قدیمی)
+        for _, ردیف in داده.iterrows():
+            if len(انتخاب) >= تعداد:
+                break
+            if str(ردیف.get("scheme_code", "")) in انتخاب_شده:
+                continue
+            if افزودن(ردیف, False, False, True):
+                انتخاب_شده.add(str(ردیف.get("scheme_code", "")))
+
+    # فقط در نبود گزینه کافی، سقف طبقه دارایی برداشته می‌شود تا پنج نتیجه نمایش داده شود.
+    if len(انتخاب) < تعداد:
+        انتخاب_شده = {str(ردیف.get("scheme_code", "")) for ردیف in انتخاب}
+        for _, ردیف in داده.iterrows():
+            if len(انتخاب) >= تعداد:
+                break
+            if str(ردیف.get("scheme_code", "")) in انتخاب_شده:
+                continue
+            افزودن(ردیف, False, False, False)
+
     return pd.DataFrame(انتخاب).reset_index(drop=True)

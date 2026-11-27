@@ -693,7 +693,7 @@ if st.session_state.get("شروع_تحلیل", False):
                         raise RuntimeError("فایل آخرین به‌روزرسانی خالی است.")
                     ستون_امتیاز = st.session_state["پروفایل"] + "_score"
                     نتیجه_قابل_رتبه = نتیجه_کامل.dropna(subset=[ستون_امتیاز])
-                    نتیجه = انتخاب_صندوق_های_متنوع(نتیجه_قابل_رتبه, ستون_امتیاز, تعداد=5, حداکثر_از_هر_گروه=2)
+                    نتیجه = انتخاب_صندوق_های_متنوع(نتیجه_قابل_رتبه, ستون_امتیاز, تعداد=5, حداکثر_از_هر_گروه=1, پروفایل=st.session_state["پروفایل"])
                     if نتیجه.empty:
                         raise RuntimeError("برای این پروفایل صندوق رتبه‌بندی‌شده‌ای در فایل روزانه وجود ندارد.")
                     تعداد_کل_دریافتی = int(تصویر.get("source_funds", 0))
@@ -899,7 +899,7 @@ if st.session_state.get("نمایش_نتیجه", False):
 
     st.markdown("---")
     st.markdown('<div class="section-title">۵ صندوق پیشنهادی متناسب با شما</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-subtitle">رتبه‌ها بر اساس مقایسه درون‌گروهی و متناسب‌سازی آموزشی با سطح ریسک شما محاسبه شده‌اند.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-subtitle">امتیاز هر صندوق با هم‌گروه‌های خودش مقایسه می‌شود؛ ترکیب پنج پیشنهاد نیز با توجه به سطح ریسک، تنوع گروه دارایی و جلوگیری از تمرکز صنعتی انتخاب می‌شود. صندوق‌های بخشی و موضوعی برای پروفایل محافظه‌کار پیشنهاد نمی‌شوند.</div>', unsafe_allow_html=True)
 
     تعداد_دارای_آلفا = int(نتیجه["alpha"].notna().sum()) if "alpha" in نتیجه.columns else 0
     تعداد_دارای_بتا = int(نتیجه["beta"].notna().sum()) if "beta" in نتیجه.columns else 0
