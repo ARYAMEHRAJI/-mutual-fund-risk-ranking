@@ -47,6 +47,11 @@ def امتیازدهی_یک_گروه(گروه):
         ["sharpe_score", "sortino_score"]
     ].mean(axis=1)
 
+    # AUM معیار مکمل اندازه صندوق است؛ رتبه آن فقط درون همان گروه محاسبه می‌شود.
+    if "aum_cr" not in داده.columns:
+        داده["aum_cr"] = float("nan")
+    داده["size_score"] = تبدیل_به_امتیاز(داده, "aum_cr")
+
     # برای رتبه‌بندی، بازدهی بلندمدت، ریسک و کیفیت باید قابل محاسبه باشند.
     داده["data_coverage"] = داده[
         ["return_1w", "return_1m", "return_3m", "return_6m",
