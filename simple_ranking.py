@@ -51,7 +51,7 @@ def امتیازدهی_یک_گروه(گروه):
     داده["data_coverage"] = داده[
         ["return_1w", "return_1m", "return_3m", "return_6m",
          "return_1y", "return_3y", "volatility", "max_drawdown",
-         "sharpe", "sortino"]
+         "sharpe", "sortino", "aum_cr"]
     ].notna().mean(axis=1) * 100
 
     داده["eligible_for_ranking"] = (
@@ -64,13 +64,13 @@ def امتیازدهی_یک_گروه(گروه):
 
     # وزن‌های مدل برای هر سطح ریسک.
     وزن_ها = {
-        "Conservative": [20, 50, 30],
-        "Moderate": [40, 30, 30],
-        "Growth": [55, 20, 25],
-        "Aggressive": [65, 10, 25]
+        "Conservative": [18, 45, 27, 10],
+        "Moderate": [36, 27, 27, 10],
+        "Growth": [49.5, 18, 22.5, 10],
+        "Aggressive": [58.5, 9, 22.5, 10]
     }
 
-    ستون_ها = ["return_score", "risk_score", "quality_score"]
+    ستون_ها = ["return_score", "risk_score", "quality_score", "size_score"]
     for پروفایل, وزن in وزن_ها.items():
         امتیازها = داده[ستون_ها]
         وزن_های_موجود = امتیازها.notna().mul(وزن, axis=1)
