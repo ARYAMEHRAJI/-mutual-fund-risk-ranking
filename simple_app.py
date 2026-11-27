@@ -8,7 +8,7 @@ import html
 
 from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav, دریافت_دارایی_تحت_مدیریت
 from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
-from simple_ranking import رتبه_بندی, انتخاب_صندوق_های_متنوع
+from simple_ranking import رتبه_بندی, انتخاب_صندوق_های_متنوع, محاسبه_وزن_سبد
 from simple_database import ذخیره_نتایج, آمار_پایگاه_داده
 
 
@@ -896,10 +896,12 @@ if st.session_state.get("شروع_تحلیل", False):
 if st.session_state.get("نمایش_نتیجه", False):
     نتیجه = st.session_state["نتیجه_صندوق"].copy()
     پروفایل = st.session_state["پروفایل"]
+    نتیجه = محاسبه_وزن_سبد(نتیجه, پروفایل)
 
     st.markdown("---")
     st.markdown('<div class="section-title">۵ صندوق پیشنهادی متناسب با شما</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-subtitle">امتیاز هر صندوق با هم‌گروه‌های خودش مقایسه می‌شود؛ ترکیب پنج پیشنهاد نیز با توجه به سطح ریسک، تنوع گروه دارایی و جلوگیری از تمرکز صنعتی انتخاب می‌شود. صندوق‌های بخشی، موضوعی و متمرکز بر یک صنعت برای پروفایل‌های محافظه‌کار و متوسط پیشنهاد نمی‌شوند؛ برای رشدگرا و ریسک‌پذیر حداکثر یک مورد انتخاب می‌شود.</div>', unsafe_allow_html=True)
+    st.caption("وزن هر صندوق نشان می‌دهد چه درصدی از کل مبلغ سرمایه‌گذاری پیشنهادی به آن اختصاص یابد. مجموع وزن‌ها ۱۰۰٪ است؛ اگر یک نوع دارایی در پیشنهادها نباشد، وزن آن بین گروه‌های موجود بازتوزیع می‌شود.")
 
     تعداد_دارای_آلفا = int(نتیجه["alpha"].notna().sum()) if "alpha" in نتیجه.columns else 0
     تعداد_دارای_بتا = int(نتیجه["beta"].notna().sum()) if "beta" in نتیجه.columns else 0
@@ -945,6 +947,7 @@ if st.session_state.get("نمایش_نتیجه", False):
 
     for شماره, ردیف in نتیجه.iterrows():
         امتیاز_صندوق = ردیف.get(پروفایل + "_score", float("nan"))
+        وزن_صندوق = float(ردیف.get("portfolio_weight", 0))
         نام_نمایشی = html.escape(str(ردیف["scheme_name"]))
         گروه_خام = str(ردیف.get("fund_group", "نامشخص"))
         گروه_نمایشی = html.escape(نام_فارسی_گروه_ها.get(گروه_خام, گروه_خام))
@@ -962,7 +965,8 @@ if st.session_state.get("نمایش_نتیجه", False):
             + '</div><div class="small-note">دارایی تحت مدیریت: ' + دارایی_نمایشی
             + '</div><div class="fund-score">امتیاز تناسب: '
             + (("{:.1f}".format(امتیاز_صندوق)) if pd.notna(امتیاز_صندوق) else "—")
-            + ' از ۱۰۰</div></div>',
+            + ' از ۱۰۰</div><div class="fund-score">وزن پیشنهادی در سبد: '
+            + "{:.1f}".format(وزن_صندوق) + '%</div></div>',
             unsafe_allow_html=True
         )
 
