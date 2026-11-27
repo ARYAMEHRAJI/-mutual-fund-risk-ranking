@@ -633,8 +633,8 @@ if st.session_state.get("شروع_تحلیل", False):
                         st.session_state["تعداد_آلفا_کل"] = تعداد_آلفا_کل
                         st.session_state["تعداد_بتا_کل"] = تعداد_بتا_کل
                         st.session_state["نمایش_نتیجه"] = True
-                    except Exception:
-                        raise
+            except Exception:
+                raise
         except Exception as خطا:
             st.error("در تحلیل داده‌ها مشکلی پیش آمد: " + str(خطا))
 
