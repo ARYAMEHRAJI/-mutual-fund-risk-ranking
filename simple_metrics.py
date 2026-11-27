@@ -182,7 +182,7 @@ def دریافت_آلفا_بتا_از_سرویس(کد_صندوق_ها, افق="3
                 پاسخ = requests.get(
                     آدرس_پایه + کد,
                     headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36", "Referer": "https://api.charliealpha.in/", "Origin": "https://api.charliealpha.in"},
-                    timeout=(5, 10)
+                    timeout=12
                 )
                 if پاسخ.status_code == 429 or پاسخ.status_code >= 500:
                     خطای_آخر = "خطای موقت سرویس (HTTP " + str(پاسخ.status_code) + ")"
