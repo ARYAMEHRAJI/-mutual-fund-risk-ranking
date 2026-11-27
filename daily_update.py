@@ -1,0 +1,69 @@
+# به‌روزرسانی خودکار روزانه داده‌های صندوق‌ها
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pandas as pd
+
+from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
+from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
+from simple_ranking import رتبه_بندی
+
+
+def main():
+    print("دریافت فهرست صندوق‌ها...")
+    همه_صندوق_ها = دریافت_صندوق_ها()
+    واجد_شرایط = انتخاب_صندوق_ها(همه_صندوق_ها)
+    if واجد_شرایط.empty:
+        raise RuntimeError("هیچ صندوق واجد شرایطی پیدا نشد.")
+
+    print(f"دریافت NAV برای {len(واجد_شرایط)} صندوق...")
+    nav = دریافت_nav(واجد_شرایط["scheme_code"].astype(str).tolist())
+    شاخص_ها = محاسبه_شاخص_ها(nav)
+    if شاخص_ها.empty:
+        raise RuntimeError("شاخص معتبری از NAV دریافت نشد.")
+
+    شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+    گروه_ها = واجد_شرایط[["scheme_code", "fund_group"]].copy()
+    گروه_ها["scheme_code"] = گروه_ها["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+    شاخص_ها = شاخص_ها.merge(گروه_ها.drop_duplicates("scheme_code"), on="scheme_code", how="left")
+
+    نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
+    کدهای_نهایی = []
+    for پروفایل in ["Conservative", "Moderate", "Growth", "Aggressive"]:
+        بهترین = نتیجه.dropna(subset=[پروفایل + "_rank"]).sort_values(پروفایل + "_rank").head(5)
+        کدهای_نهایی.extend(بهترین["scheme_code"].astype(str).tolist())
+
+    کدهای_نهایی = list(dict.fromkeys(کدهای_نهایی))
+    print(f"دریافت آلفا و بتا برای {len(کدهای_نهایی)} صندوق منتخب...")
+    آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(کدهای_نهایی, افق="3Y")
+    آلفا_بتا["scheme_code"] = آلفا_بتا["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+    نتیجه = نتیجه.merge(آلفا_بتا, on="scheme_code", how="left")
+
+    for ستون in ["alpha", "beta"]:
+        if ستون not in نتیجه.columns:
+            نتیجه[ستون] = None
+
+    تاریخ_شاخص = str(نتیجه["metrics_as_of"].dropna().max())
+    آمار_گروه = واجد_شرایط.groupby("fund_group")["scheme_code"].nunique().to_dict()
+    خروجی = {
+        "updated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "metrics_as_of": تاریخ_شاخص,
+        "source_funds": int(همه_صندوق_ها["scheme_code"].nunique()),
+        "eligible_funds": int(واجد_شرایط["scheme_code"].nunique()),
+        "analyzed_funds": int(نتیجه["scheme_code"].nunique()),
+        "funds_with_nav": int(nav["scheme_code"].nunique()),
+        "alpha_received": int(نتیجه["alpha"].notna().sum()),
+        "beta_received": int(نتیجه["beta"].notna().sum()),
+        "group_counts": {str(k): int(v) for k, v in آمار_گروه.items()},
+        "results": json.loads(نتیجه.to_json(orient="records", force_ascii=False, date_format="iso"))
+    }
+
+    مسیر = Path("data/latest_snapshot.json")
+    مسیر.parent.mkdir(parents=True, exist_ok=True)
+    مسیر.write_text(json.dumps(خروجی, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Snapshot saved: {مسیر}; metrics date: {تاریخ_شاخص}; rows: {len(نتیجه)}")
+
+
+if __name__ == "__main__":
+    main()
