@@ -101,7 +101,8 @@ def انتخاب_صندوق_ها(صندوق_ها):
     دسته_ها = pd.Series(index=داده.index, dtype="object")
     for ستون in ["scheme_sub_category", "category_sub", "scheme_category", "category"]:
         if ستون in داده.columns:
-            دسته_ها = دسته_ها.combine_first(داده[ستون])
+            مقدار_دسته = داده[ستون].replace(r"^\\s*$", pd.NA, regex=True)
+            دسته_ها = دسته_ها.combine_first(مقدار_دسته)
 
     if دسته_ها.isna().all():
         raise ValueError("ستون دسته‌بندی صندوق در فایل منبع پیدا نشد.")
