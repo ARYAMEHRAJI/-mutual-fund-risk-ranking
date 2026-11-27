@@ -136,11 +136,13 @@ class TestFundRanking(unittest.TestCase):
     def test_lower_volatility_gets_higher_weight_within_same_asset_group(self):
         data = pd.DataFrame([
             {"scheme_name": "Low volatility equity", "fund_group": "Equity - Large Cap", "volatility": 0.10},
-            {"scheme_name": "High volatility equity", "fund_group": "Equity - Flexi Cap", "volatility": 0.20},
+            {"scheme_name": "Medium volatility equity", "fund_group": "Equity - Flexi Cap", "volatility": 0.20},
+            {"scheme_name": "High volatility equity", "fund_group": "Equity - Mid Cap", "volatility": 0.30},
             {"scheme_name": "Gold", "fund_group": "Other - Gold", "volatility": 0.15}
         ])
         result = محاسبه_وزن_سبد(data, "Growth")
         self.assertGreater(result.loc[0, "portfolio_weight"], result.loc[1, "portfolio_weight"])
+        self.assertLessEqual(result["portfolio_weight"].max(), 40.0)
         self.assertAlmostEqual(result["portfolio_weight"].sum(), 100.0, places=1)
 
     def test_missing_volatility_uses_equal_weights_within_group(self):
