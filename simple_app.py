@@ -193,6 +193,14 @@ hr { border-color: #e7edf5; }
     text-align: right !important;
 }
 .fund-card { direction: rtl; text-align: right; }
+.hero, .section-title, .section-subtitle { direction: rtl; text-align: right; }
+[data-testid="stTabs"] [role="tab"] { direction: rtl !important; }
+[data-testid="stExpander"] summary { direction: rtl !important; text-align: right !important; }
+[data-testid="stDataFrame"] div[role="gridcell"],
+[data-testid="stDataFrame"] div[role="columnheader"] {
+    direction: rtl !important;
+    text-align: right !important;
+}
 footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
@@ -961,6 +969,7 @@ if st.session_state.get("نمایش_نتیجه", False):
         st.caption(
             "نوع دارایی نیز در امتیاز تناسب اثر دارد: درآمد ثابت برای محافظه‌کار، "
             "گروه ترکیبی برای سطح متوسط و سهام برای پروفایل‌های ریسک‌پذیرتر امتیاز بیشتری می‌گیرد. "
+            "برای صندوق‌های شاخصی و کالایی، تعدیل جداگانه نوع دارایی اعمال نشده است. "
             "این تعدیل یک فرض آموزشی است و امتیاز، ریسک مطلق صندوق را نشان نمی‌دهد."
         )
         تاریخ_شاخص_ها = (
