@@ -22,7 +22,7 @@ streamlit run simple_app.py
 برنامه صندوق‌های فعال، طرح Direct، گزینه Growth، از نوع Open Ended و با حداقل سه سال سابقه را بررسی می‌کند. گروه‌های پشتیبانی‌شده شامل شش گروه سهامی و گروه‌های اصلی درآمد ثابت هستند:
 
 - سهامی: Large Cap، Mid Cap، Small Cap، Flexi Cap، Multi Cap و Focused.
-- درآمد ثابت: Overnight، Liquid، Ultra Short Duration، Low Duration، Money Market، Short Duration، Medium Duration، Medium to Long Duration، Long Duration، Dynamic Bond، Corporate Bond، Credit Risk، Banking and PSU، Gilt و Floater.
+- درآمد ثابت: Overnight، Liquid، Ultra Short Duration، Low Duration، Money Market، Short Duration، Medium Duration، Medium to Long Duration، Long Duration، Dynamic Bond، Corporate Bond، Credit Risk، Banking and PSU، Gilt و Floater.\n- ترکیبی: Conservative Hybrid، Balanced Hybrid، Aggressive Hybrid، Dynamic Asset Allocation، Multi Asset Allocation، Equity Savings و Arbitrage.
 
 نام دسته‌بندی‌ها با تطبیق دقیق بررسی می‌شود؛ بنابراین دسته‌ای مانند Large & Mid Cap به اشتباه در گروه Mid Cap قرار نمی‌گیرد. دسته‌هایی که در فهرست گروه‌های شناخته‌شده نیستند فعلاً وارد پیشنهادها نمی‌شوند.
 
@@ -56,7 +56,7 @@ streamlit run simple_app.py
 | رشدگرا | ۵۵٪ | ۲۰٪ | ۲۵٪ |
 | ریسک‌پذیر | ۶۵٪ | ۱۰٪ | ۲۵٪ |
 
-۵. چون امتیاز صدکی گروه‌های متفاوت به‌تنهایی ریسک مطلق یکسانی را نشان نمی‌دهد، نوع دارایی نیز با یک تعدیل شفاف در امتیاز نهایی اثر می‌گذارد. برای مثال درآمد ثابت برای پروفایل محافظه‌کار و سهام برای پروفایل ریسک‌پذیر امتیاز تناسب بیشتری می‌گیرد. این تعدیل یک فرض آموزشی و قابل تغییر است، نه یک قانون قطعی سرمایه‌گذاری.
+۵. چون امتیاز صدکی گروه‌های متفاوت به‌تنهایی ریسک مطلق یکسانی را نشان نمی‌دهد، نوع دارایی نیز با یک تعدیل شفاف در امتیاز نهایی اثر می‌گذارد. برای مثال درآمد ثابت برای پروفایل محافظه‌کار، صندوق‌های ترکیبی برای پروفایل متوسط و سهام برای پروفایل ریسک‌پذیر امتیاز تناسب بیشتری می‌گیرد. این تعدیل یک فرض آموزشی و قابل تغییر است، نه یک قانون قطعی سرمایه‌گذاری.
 
 آلفا و بتا در رتبه‌بندی دخالت ندارند؛ آن‌ها فقط برای مقایسه پنج گزینه نهایی نمایش داده می‌شوند. بتای بالاتر لزوماً بهتر یا بدتر نیست.
 
