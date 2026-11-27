@@ -22,5 +22,7 @@ jobs:
         run: python -m compileall -q simple_app.py simple_data.py simple_metrics.py simple_ranking.py simple_database.py
       - name: Import app modules
         run: python -c "import simple_data, simple_metrics, simple_ranking, simple_database, simple_app"
+      - name: Run Streamlit smoke test
+        run: python -c "from streamlit.testing.v1 import AppTest; app = AppTest.from_file('simple_app.py').run(); assert len(app.exception) == 0, app.exception"
       - name: Run logic tests
         run: python -m unittest discover -s tests -p 'test_simple_logic.py' -v
