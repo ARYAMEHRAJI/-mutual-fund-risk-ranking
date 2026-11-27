@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from simple_data import دریافت_صندوق_ها, انتخاب_صندوق_ها, دریافت_nav
 from simple_metrics import محاسبه_شاخص_ها, دریافت_آلفا_بتا_از_سرویس
 from simple_ranking import رتبه_بندی
+from simple_database import ذخیره_نتایج, آمار_پایگاه_داده
 
 st.set_page_config(
     page_title="صندوق‌یار | پیشنهاد هوشمند صندوق",
@@ -235,7 +236,11 @@ if st.session_state.get("شروع_تحلیل", False):
 
                 تعداد_کل_دریافتی = int(همه_صندوق_ها["scheme_code"].nunique())
 
-                nav = دریافت_nav(صندوق_های_انتخابی["scheme_code"].tolist())
+                @st.cache_data(ttl=3600, show_spinner=False)
+                def دریافت_nav_ذخیره_شده(کدها):
+                    return دریافت_nav(list(کدها))
+
+                nav = دریافت_nav_ذخیره_شده(tuple(صندوق_های_انتخابی["scheme_code"].astype(str)))
                 تعداد_دارای_nav = int(nav["scheme_code"].nunique())
                 شاخص_ها = محاسبه_شاخص_ها(nav)
 
@@ -253,16 +258,26 @@ if st.session_state.get("شروع_تحلیل", False):
                     how="left"
                 )
 
-                # آلفا و بتا برای همان صندوق های دارای شاخص دریافت می شوند.
+                # آلفا و بتا برای رتبه بندی اولیه لازم نیستند؛ ستون خالی می گذاریم.
+                # به این ترتیب فقط برای پنج صندوق نهایی درخواست خارجی ارسال می شود.
+                شاخص_ها["alpha"] = float("nan")
+                شاخص_ها["beta"] = float("nan")
+
+                تعداد_تحلیل_شده = int(شاخص_ها["scheme_code"].nunique())
+                تعداد_واجد_شرایط = int(صندوق_های_واجد_شرایط["scheme_code"].nunique())
+
+                نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
+                ستون_رتبه = st.session_state["پروفایل"] + "_rank"
+                نتیجه = نتیجه.sort_values(ستون_رتبه).head(5).reset_index(drop=True)
+
+                # دریافت آلفا و بتا فقط برای پنج گزینه نهایی، برای جلوگیری از انتظار طولانی
                 جدول_آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(
-                    شاخص_ها["scheme_code"].astype(str).tolist(),
-                    افق="3Y"
+                    نتیجه["scheme_code"].astype(str).tolist(), افق="3Y"
                 )
                 جدول_آلفا_بتا["scheme_code"] = (
-                    جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                    جدول_آلفا_بتا["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
                 )
-                شاخص_ها = شاخص_ها.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
-
+                نتیجه = نتیجه.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
                 خطاهای_آلفا_بتا = [
                     str(ردیف["scheme_code"]) + ": " + str(ردیف["alpha_beta_error"])
                     for _, ردیف in جدول_آلفا_بتا.iterrows()
@@ -277,14 +292,13 @@ if st.session_state.get("شروع_تحلیل", False):
                         if not جدول_آلفا_بتا["alpha_beta_as_of"].dropna().empty else "نامشخص"
                     )
                 }]
-                تعداد_تحلیل_شده = int(شاخص_ها["scheme_code"].nunique())
-                تعداد_آلفا_کل = int(شاخص_ها["alpha"].notna().sum())
-                تعداد_بتا_کل = int(شاخص_ها["beta"].notna().sum())
-                تعداد_واجد_شرایط = int(صندوق_های_واجد_شرایط["scheme_code"].nunique())
+                تعداد_آلفا_کل = int(نتیجه["alpha"].notna().sum())
+                تعداد_بتا_کل = int(نتیجه["beta"].notna().sum())
 
-                نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
-                ستون_رتبه = st.session_state["پروفایل"] + "_rank"
-                نتیجه = نتیجه.sort_values(ستون_رتبه).head(5).reset_index(drop=True)
+                # ثبت داده ها در پایگاه داده SQLite برای بخش طراحی پایگاه داده
+                اطلاعات_ذخیره = نتیجه.copy()
+                اطلاعات_ذخیره["fund_group"] = اطلاعات_ذخیره["fund_group"].fillna("نامشخص")
+                ذخیره_نتایج(اطلاعات_ذخیره)
                 st.session_state["نتیجه_صندوق"] = نتیجه
                 st.session_state["خطاهای_آلفا_بتا"] = خطاهای_آلفا_بتا
                 st.session_state["منابع_شاخص"] = منابع_شاخص
@@ -424,7 +438,7 @@ if st.session_state.get("نمایش_نتیجه", False):
         نمایش_نمودار("beta")
 
     st.markdown("---")
-    تب_جدول, تب_منابع = st.tabs(["جدول مقایسه", "اطلاعات داده‌ها"])
+    تب_جدول, تب_منابع, تب_پایگاه = st.tabs(["جدول مقایسه", "اطلاعات داده‌ها", "پایگاه داده"])
     with تب_جدول:
         ستون_های_جدول = ["scheme_name"] + list(نام_شاخص_ها.keys())
         جدول = نتیجه[[x for x in ستون_های_جدول if x in نتیجه.columns]].copy()
@@ -462,6 +476,14 @@ if st.session_state.get("نمایش_نتیجه", False):
             st.dataframe(جدول_منبع, use_container_width=True, hide_index=True)
         for خطا in st.session_state.get("خطاهای_آلفا_بتا", []):
             st.warning("دریافت آلفا/بتا برای یک صندوق ناموفق بود: " + خطا)
+    with تب_پایگاه:
+        st.markdown("**ذخیره سازی اطلاعات با SQLite**")
+        st.write("اطلاعات صندوق ها و شاخص های محاسبه شده در یک پایگاه داده رابطه ای ذخیره می شوند.")
+        آمار_پایگاه = آمار_پایگاه_داده()
+        پ۱, پ۲ = st.columns(2)
+        پ۱.metric("تعداد صندوق های ذخیره شده", آمار_پایگاه["funds"])
+        پ۲.metric("تعداد رکوردهای شاخص", آمار_پایگاه["metrics"])
+        st.caption("در این نسخه، هر صندوق با کد یکتا شناسایی می شود و رکورد شاخص های آن به همان کد مرتبط است.")
 
 st.markdown("---")
 st.markdown(
