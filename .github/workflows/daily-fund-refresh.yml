@@ -31,7 +31,7 @@ jobs:
           cache: "pip"
 
       - name: Check Python syntax
-        run: python -m py_compile simple_app.py daily_update.py simple_data.py simple_metrics.py simple_ranking.py
+        run: python -m py_compile simple_app.py daily_update.py simple_data.py simple_metrics.py simple_ranking.py simple_database.py
 
       - name: Install dependencies
         run: |
