@@ -29,9 +29,13 @@ def main():
     شاخص_ها = شاخص_ها.merge(گروه_ها.drop_duplicates("scheme_code"), on="scheme_code", how="left")
 
     print("دریافت دارایی تحت مدیریت از گزارش روزانه AMFI...")
-    دارایی_تحت_مدیریت = دریافت_دارایی_تحت_مدیریت(
-        واجد_شرایط["scheme_code"].astype(str).tolist()
-    )
+    try:
+        دارایی_تحت_مدیریت = دریافت_دارایی_تحت_مدیریت(
+            واجد_شرایط["scheme_code"].astype(str).tolist()
+        )
+    except Exception as خطای_دارایی:
+        print("هشدار: دریافت AUM ناموفق بود؛ رتبه‌بندی بدون این معیار انجام می‌شود: " + str(خطای_دارایی))
+        دارایی_تحت_مدیریت = pd.DataFrame(columns=["scheme_code", "aum_cr", "aum_as_of"])
     شاخص_ها = شاخص_ها.merge(دارایی_تحت_مدیریت, on="scheme_code", how="left")
 
     نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
