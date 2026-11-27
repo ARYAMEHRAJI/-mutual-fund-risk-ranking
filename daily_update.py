@@ -47,6 +47,17 @@ def main():
     کدهای_نهایی = list(dict.fromkeys(کدهای_نهایی))
     print(f"دریافت آلفا و بتا برای {len(کدهای_نهایی)} صندوق منتخب...")
     آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(کدهای_نهایی, افق="3Y")
+    print(
+        "Alpha received:", int(آلفا_بتا["alpha"].notna().sum()),
+        "/", len(آلفا_بتا),
+        "| Beta received:", int(آلفا_بتا["beta"].notna().sum()),
+        "/", len(آلفا_بتا)
+    )
+    خطاهای_آلفا_بتا = آلفا_بتا[
+        آلفا_بتا["alpha_beta_error"].astype(str).str.strip().ne("")
+    ]
+    for _, ردیف_خطا in خطاهای_آلفا_بتا.iterrows():
+        print("Alpha/Beta warning for", ردیف_خطا["scheme_code"], ":", ردیف_خطا["alpha_beta_error"])
     آلفا_بتا["scheme_code"] = آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
     نتیجه = نتیجه.merge(آلفا_بتا, on="scheme_code", how="left")
 
@@ -67,6 +78,10 @@ def main():
         "nav_funds_received": int(nav["scheme_code"].nunique()),
         "alpha_received": int(نتیجه["alpha"].notna().sum()),
         "beta_received": int(نتیجه["beta"].notna().sum()),
+        "alpha_beta_errors": [
+            {"scheme_code": str(ردیف["scheme_code"]), "error": str(ردیف["alpha_beta_error"])}
+            for _, ردیف in خطاهای_آلفا_بتا.iterrows()
+        ],
         "aum_available": int(نتیجه["aum_cr"].notna().sum()) if "aum_cr" in نتیجه.columns else 0,
         "aum_as_of": str(نتیجه["aum_as_of"].dropna().max()) if "aum_as_of" in نتیجه.columns and not نتیجه["aum_as_of"].dropna().empty else "نامشخص",
         "group_counts": {str(k): int(v) for k, v in آمار_گروه.items()},
