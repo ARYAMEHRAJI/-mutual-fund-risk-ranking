@@ -41,6 +41,18 @@ def main():
     # ابتدا رتبه‌بندی همه صندوق‌ها را انجام می‌دهیم.
     نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
 
+    # اطلاعات طرح و نوع معامله را نیز به فایل نهایی اضافه می‌کنیم.
+    ستون_های_طرح = [
+        ستون for ستون in [
+            "scheme_code", "scheme_plan", "scheme_option", "scheme_type",
+            "category_sub", "is_etf", "trading_type", "source"
+        ] if ستون in واجد_شرایط.columns
+    ]
+    اطلاعات_طرح = واجد_شرایط[ستون_های_طرح].copy()
+    اطلاعات_طرح["scheme_code"] = اطلاعات_طرح["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+    نتیجه["scheme_code"] = نتیجه["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+    نتیجه = نتیجه.merge(اطلاعات_طرح.drop_duplicates("scheme_code"), on="scheme_code", how="left")
+
     # آلفا و بتا را برای همه صندوق‌های تحلیل‌شده می‌گیریم، نه فقط پنج پیشنهاد.
     کدهای_همه_صندوق_ها = نتیجه["scheme_code"].astype(str).tolist()
     print(f"دریافت آلفا و بتا برای همه {len(کدهای_همه_صندوق_ها)} صندوق...")
@@ -66,12 +78,39 @@ def main():
 
     تاریخ_شاخص = str(نتیجه["metrics_as_of"].dropna().max())
     آمار_گروه = واجد_شرایط.groupby("fund_group")["scheme_code"].nunique().to_dict()
+
+    # صندوق‌های واجد شرایطی که به دلیل سابقه یا تازگی ناکافی NAV تحلیل نشدند.
+    کدهای_تحلیل_شده = set(نتیجه["scheme_code"].astype(str))
+    تحلیل_نشده = واجد_شرایط[
+        ~واجد_شرایط["scheme_code"].astype(str).isin(کدهای_تحلیل_شده)
+    ]
+    فهرست_تحلیل_نشده = [
+        {
+            "scheme_code": str(ردیف["scheme_code"]),
+            "scheme_name": str(ردیف["scheme_name"]),
+            "fund_group": str(ردیف["fund_group"]),
+            "reason": "تاریخچه NAV برای محاسبه شاخص‌های سه‌ساله کافی یا به‌روز نیست"
+        }
+        for _, ردیف in تحلیل_نشده.iterrows()
+    ]
+
+    تعداد_ETF = int(واجد_شرایط["is_etf"].sum()) if "is_etf" in واجد_شرایط.columns else 0
+    تعداد_غیر_ETF = int(len(واجد_شرایط) - تعداد_ETF)
+    from zoneinfo import ZoneInfo
+    زمان_هند = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
+
     خروجی = {
         "updated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "updated_at_india": زمان_هند,
         "metrics_as_of": تاریخ_شاخص,
         "source_funds": int(همه_صندوق_ها["scheme_code"].nunique()),
         "eligible_funds": int(واجد_شرایط["scheme_code"].nunique()),
+        "etf_funds": تعداد_ETF,
+        "non_etf_funds": تعداد_غیر_ETF,
+        "etf_classification_method": "تشخیص از نام رسمی طرح AMFI؛ طرح‌های ETF Fund of Fund در گروه غیر ETF قرار می‌گیرند",
         "analyzed_funds": int(نتیجه["scheme_code"].nunique()),
+        "not_analyzed_count": int(len(تحلیل_نشده)),
+        "not_analyzed_funds": فهرست_تحلیل_نشده,
         "funds_with_metrics": int(نتیجه["scheme_code"].nunique()),
         "funds_with_nav": int(nav["scheme_code"].nunique()),
         "nav_funds_received": int(nav["scheme_code"].nunique()),

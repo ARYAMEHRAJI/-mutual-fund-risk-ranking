@@ -71,6 +71,14 @@ def پیدا_کردن_گروه(نام_دسته, نام_صندوق=""):
     if "silver" in نام or "silver fund" in نام_کامل or "silver etf" in نام_کامل:
         return "Other - Silver"
     if "index" in نام or "etf" in نام or "index" in نام_کامل or "etf" in نام_کامل:
+        # شاخص‌های اوراق بدهی را از شاخص‌های سهامی جدا می‌کنیم.
+        نام_صندوق_تمیز = تمیزکردن_نام(نام_صندوق)
+        کلیدواژه_های_بدهی = [
+            "bond", "gilt", "sdl", "g sec", "gsec", "treasury",
+            "t bill", "liquid etf", "overnight etf", "money market"
+        ]
+        if any(کلیدواژه in نام_صندوق_تمیز for کلیدواژه in کلیدواژه_های_بدهی):
+            return "Other - Debt Index"
         return "Other - Index"
 
     for گروه, نام_های_مجاز in گروه_ها.items():
@@ -78,6 +86,14 @@ def پیدا_کردن_گروه(نام_دسته, نام_صندوق=""):
             return گروه
 
     return None
+
+
+def تشخیص_ETF(نام_صندوق):
+    """ETF واقعی را از صندوق‌های سرمایه‌گذاری در ETF جدا می‌کند."""
+    نام = str(نام_صندوق).lower()
+    صندوق_در_صندوق = re.search(r"\bfof\b|\bfund\s+of\s+funds?\b", نام)
+    دارای_نام_ETF = re.search(r"\betf\b", نام)
+    return bool(دارای_نام_ETF) and not bool(صندوق_در_صندوق)
 
 
 def دریافت_دارایی_تحت_مدیریت(کد_صندوق_ها):
@@ -98,6 +114,12 @@ def دریافت_دارایی_تحت_مدیریت(کد_صندوق_ها):
     if ستون_های_گم_شده:
         raise ValueError("ستون‌های دارایی تحت مدیریت در منبع پیدا نشد: " + ", ".join(ستون_های_گم_شده))
 
+    # شاخص رسمی اعلام‌شده در گزارش AMFI و سند صندوق را نیز نگه می‌داریم.
+    ستون_های_شاخص_مرجع = [
+        ستون for ستون in ["amfi_daily_benchmark", "ssd_benchmark_tier1_std"]
+        if ستون in جزئیات.columns
+    ]
+
     if "source" in جزئیات.columns:
         جزئیات = جزئیات[جزئیات["source"].astype(str).str.upper() == "MF"].copy()
 
@@ -114,8 +136,9 @@ def دریافت_دارایی_تحت_مدیریت(کد_صندوق_ها):
     کدها = [
         str(کد).strip().removesuffix(".0") for کد in کد_صندوق_ها
     ]
+    ستون_های_خروجی = ["scheme_code", "aum_cr", "aum_as_of"] + ستون_های_شاخص_مرجع
     خروجی = جزئیات[جزئیات["scheme_code"].isin(کدها)][
-        ["scheme_code", "aum_cr", "aum_as_of"]
+        ستون_های_خروجی
     ].drop_duplicates("scheme_code")
 
     return خروجی.reset_index(drop=True)
@@ -185,6 +208,14 @@ def انتخاب_صندوق_ها(صندوق_ها):
 
     نتیجه = داده[انتخاب].copy()
     نتیجه["scheme_code"] = نتیجه["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+
+    # ETF از روی نام رسمی طرح تشخیص داده می‌شود؛ صندوق‌های ETF Fund of Fund خود ETF نیستند.
+    نتیجه["is_etf"] = نتیجه["scheme_name"].apply(تشخیص_ETF)
+    نتیجه["trading_type"] = نتیجه["is_etf"].apply(
+        lambda مقدار: "ETF؛ قابل معامله در بورس"
+        if مقدار else "غیر ETF؛ صدور و ابطال از مسیر صندوق یا پلتفرم"
+    )
+
     نتیجه = نتیجه.drop_duplicates("scheme_code")
     return نتیجه.reset_index(drop=True)
 

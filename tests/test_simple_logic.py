@@ -8,7 +8,7 @@ import pandas as pd
 import simple_data
 import simple_database
 from simple_metrics import بازدهی_در_بازه, محاسبه_شاخص_ها
-from simple_ranking import رتبه_بندی
+from simple_ranking import رتبه_بندی, تعدیل_نوع_دارایی
 
 
 class TestFundRanking(unittest.TestCase):
@@ -41,6 +41,12 @@ class TestFundRanking(unittest.TestCase):
         self.assertGreater(debt["Conservative_score"], equity["Conservative_score"])
         self.assertGreater(equity["Aggressive_score"], debt["Aggressive_score"])
 
+    def test_conservative_profile_penalizes_aggressive_hybrid(self):
+        self.assertGreater(
+            تعدیل_نوع_دارایی("Hybrid - Conservative", "Conservative"),
+            تعدیل_نوع_دارایی("Hybrid - Aggressive", "Conservative")
+        )
+
     def test_small_group_scores_stay_near_middle(self):
         data = self.make_data().query("fund_group == 'Debt - Liquid'").head(2)
         result = رتبه_بندی(data)
@@ -72,6 +78,15 @@ class TestFundData(unittest.TestCase):
             simple_data.پیدا_کردن_گروه("Balanced Hybrid Fund"),
             "Hybrid - Balanced"
         )
+        self.assertEqual(
+            simple_data.پیدا_کردن_گروه(
+                "Index Funds",
+                "Nippon India Nifty AAA CPSE Bond Plus SDL Index Fund"
+            ),
+            "Other - Debt Index"
+        )
+        self.assertTrue(simple_data.تشخیص_ETF("Nippon India Nifty Pharma ETF"))
+        self.assertFalse(simple_data.تشخیص_ETF("Mirae Asset NYSE FANG ETF Fund of Fund"))
 
     def test_fund_filters_keep_only_supported_open_direct_growth_schemes(self):
         data = pd.DataFrame([

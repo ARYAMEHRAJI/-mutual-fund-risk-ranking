@@ -5,6 +5,7 @@ import numpy as np
 import time
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
+from zoneinfo import ZoneInfo
 from threading import Lock
 
 
@@ -42,6 +43,10 @@ def محاسبه_شاخص_ها(اطلاعات_nav):
     داده["nav"] = pd.to_numeric(داده["nav"], errors="coerce")
     داده = داده.dropna(subset=["date", "nav"])
     داده = داده[داده["nav"] > 0]
+
+    # بعضی NAVها با تاریخ آینده منتشر می‌شوند؛ آن‌ها را وارد محاسبات نمی‌کنیم.
+    تاریخ_امروز_هند = pd.Timestamp.now(tz="Asia/Kolkata").date()
+    داده = داده[داده["date"].dt.date <= تاریخ_امروز_هند]
 
     if داده.empty:
         return pd.DataFrame()

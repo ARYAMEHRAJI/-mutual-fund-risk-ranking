@@ -19,6 +19,51 @@ def تبدیل_به_امتیاز(جدول, ستون, بیشتر_بهتر=True):
     return 50 + (امتیاز_خام - 50) * ضریب_اعتماد
 
 
+def تعدیل_نوع_دارایی(گروه, پروفایل):
+    """امتیاز تناسب نوع صندوق؛ یک فرض آموزشی و قابل توضیح است."""
+    گروه = str(گروه)
+
+    if گروه.startswith("Debt") or گروه == "Other - Debt Index":
+        return {"Conservative": 10, "Moderate": 3, "Growth": -5, "Aggressive": -10}[پروفایل]
+
+    if گروه.startswith("Equity") or گروه == "Other - Index":
+        return {"Conservative": -10, "Moderate": 3, "Growth": 7, "Aggressive": 10}[پروفایل]
+
+    if گروه.startswith("Hybrid"):
+        زیرگروه = گروه.split(" - ", 1)[-1]
+        جدول = {
+            "Conservative": {
+                "Conservative": 8, "Balanced": 5, "Aggressive": -8,
+                "Arbitrage": 8, "Dynamic Allocation": 3,
+                "Multi Asset": 3, "Equity Savings": 2
+            },
+            "Moderate": {
+                "Conservative": 3, "Balanced": 8, "Aggressive": 4,
+                "Arbitrage": 5, "Dynamic Allocation": 6,
+                "Multi Asset": 6, "Equity Savings": 5
+            },
+            "Growth": {
+                "Conservative": -2, "Balanced": 3, "Aggressive": 7,
+                "Arbitrage": 1, "Dynamic Allocation": 5,
+                "Multi Asset": 6, "Equity Savings": 5
+            },
+            "Aggressive": {
+                "Conservative": -5, "Balanced": 2, "Aggressive": 10,
+                "Arbitrage": 1, "Dynamic Allocation": 5,
+                "Multi Asset": 7, "Equity Savings": 6
+            }
+        }
+        return جدول[پروفایل].get(زیرگروه, 0)
+
+    if گروه == "Other - Gold":
+        return {"Conservative": 1, "Moderate": 3, "Growth": 5, "Aggressive": 5}[پروفایل]
+
+    if گروه == "Other - Silver":
+        return {"Conservative": -4, "Moderate": 2, "Growth": 6, "Aggressive": 7}[پروفایل]
+
+    return 0
+
+
 def امتیازدهی_یک_گروه(گروه):
     داده = گروه.copy()
 
@@ -83,27 +128,14 @@ def امتیازدهی_یک_گروه(گروه):
         مجموع_امتیاز = امتیازها.mul(وزن, axis=1).sum(axis=1, min_count=1)
         داده[پروفایل + "_score"] = مجموع_امتیاز / مجموع_وزن.where(مجموع_وزن != 0)
 
-        # ترجیح نوع دارایی نیز روشن و قابل توضیح است:
-        # محافظه‌کار به درآمد ثابت و ریسک‌پذیر به سهام وزن بیشتری می‌دهد.
-        گروه_متنی = داده["fund_group"].astype(str)
-        درآمد_ثابت = گروه_متنی.str.startswith("Debt")
-        سهامی = گروه_متنی.str.startswith("Equity")
-        ترکیبی = گروه_متنی.str.startswith("Hybrid")
+        # تعدیل نوع دارایی را با توجه به زیرگروه هم انجام می‌دهیم؛
+        # برای نمونه، مختلط تهاجمی برای کاربر محافظه‌کار امتیاز منفی می‌گیرد.
+        تعدیل_ها = داده["fund_group"].apply(
+            lambda گروه: تعدیل_نوع_دارایی(گروه, پروفایل)
+        )
 
-        تعدیل = {
-            "Conservative": (10, 5, -10),
-            "Moderate": (5, 5, 0),
-            "Growth": (-5, 0, 5),
-            "Aggressive": (-10, -5, 10)
-        }
-        امتیاز_درآمد_ثابت, امتیاز_ترکیبی, امتیاز_سهامی = تعدیل[پروفایل]
-
-        # کمی از امتیاز نسبی کم می‌کنیم و سپس ترجیح نوع دارایی را اضافه می‌کنیم.
-        # این روش از جمع شدن امتیازها بالاتر از ۱۰۰ جلوگیری می‌کند.
-        امتیاز_نهایی = داده[پروفایل + "_score"] * 0.9
-        امتیاز_نهایی = امتیاز_نهایی + درآمد_ثابت.astype(int) * امتیاز_درآمد_ثابت
-        امتیاز_نهایی = امتیاز_نهایی + ترکیبی.astype(int) * امتیاز_ترکیبی
-        امتیاز_نهایی = امتیاز_نهایی + سهامی.astype(int) * امتیاز_سهامی
+        # ۹۰ درصد امتیاز از شاخص‌های محاسبه‌شده و ۱۰ درصد از تناسب نوع دارایی است.
+        امتیاز_نهایی = داده[پروفایل + "_score"] * 0.9 + تعدیل_ها
         داده[پروفایل + "_score"] = امتیاز_نهایی.clip(0, 100)
 
         داده.loc[~داده["eligible_for_ranking"], پروفایل + "_score"] = float("nan")

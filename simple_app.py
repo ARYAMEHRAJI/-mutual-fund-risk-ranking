@@ -52,7 +52,8 @@ st.set_page_config(
     "Hybrid - Multi Asset": "مختلط - چنددارایی",
     "Hybrid - Equity Savings": "مختلط - پس‌انداز سهامی",
     "Hybrid - Arbitrage": "مختلط - آربیتراژ",
-    "Other - Index": "صندوق‌های شاخصی",
+    "Other - Index": "صندوق‌های شاخصی سهامی",
+    "Other - Debt Index": "صندوق‌های شاخصی اوراق بدهی",
     "Other - Gold": "صندوق‌های طلا",
     "Other - Silver": "صندوق‌های نقره"
 }
@@ -566,8 +567,10 @@ if صفحه_فعال == "مقایسه صندوق‌ها":
             st.caption("AUM اندازه کل دارایی صندوق در گزارش AMFI است و همه طرح‌ها و گزینه‌های همان صندوق را در بر می‌گیرد.")
             رسم_نمودار_مقایسه("aum_cr")
 
+        ستون_های_نوع_معامله = ["trading_type"] if "trading_type" in نتیجه_مقایسه.columns else []
         جدول_مقایسه = نتیجه_مقایسه[
             ["scheme_name", "fund_group", "comparison_score"] +
+            ستون_های_نوع_معامله +
             [ستون for ستون in نام_شاخص_های_مقایسه if ستون in نتیجه_مقایسه.columns]
         ].copy()
         if "alpha" in جدول_مقایسه.columns:
@@ -579,6 +582,7 @@ if صفحه_فعال == "مقایسه صندوق‌ها":
             "scheme_name": "نام صندوق",
             "fund_group": "دسته‌بندی",
             "comparison_score": "امتیاز کلی از ۱۰۰",
+            "trading_type": "نوع معامله",
             **{ستون: مقدار[0] for ستون, مقدار in نام_شاخص_های_مقایسه.items()}
         })
         st.markdown("**جدول کامل مقایسه**")
@@ -696,6 +700,10 @@ if st.session_state.get("شروع_تحلیل", False):
                     تعداد_تحلیل_شده = int(تصویر.get("analyzed_funds", len(نتیجه_کامل)))
                     تعداد_دارای_nav = int(تصویر.get("funds_with_nav", تعداد_تحلیل_شده))
                     تعداد_هر_گروه = تصویر.get("group_counts", {})
+                    تعداد_ETF = int(تصویر.get("etf_funds", نتیجه_کامل.get("is_etf", pd.Series(dtype=bool)).sum()))
+                    تعداد_غیر_ETF = int(تصویر.get("non_etf_funds", تعداد_واجد_شرایط - تعداد_ETF))
+                    تعداد_تحلیل_نشده = int(تصویر.get("not_analyzed_count", max(0, تعداد_واجد_شرایط - تعداد_تحلیل_شده)))
+                    فهرست_تحلیل_نشده = تصویر.get("not_analyzed_funds", [])
                     # آمار آلفا و بتا را از همه صندوق‌های فایل روزانه می‌خوانیم.
                     تعداد_آلفا_کل = int(نتیجه_کامل["alpha"].notna().sum()) if "alpha" in نتیجه_کامل.columns else 0
                     تعداد_بتا_کل = int(نتیجه_کامل["beta"].notna().sum()) if "beta" in نتیجه_کامل.columns else 0
@@ -732,6 +740,10 @@ if st.session_state.get("شروع_تحلیل", False):
                     st.session_state["تعداد_دارای_nav"] = تعداد_دارای_nav
                     st.session_state["تعداد_آلفا_کل"] = تعداد_آلفا_کل
                     st.session_state["تعداد_بتا_کل"] = تعداد_بتا_کل
+                    st.session_state["تعداد_ETF"] = تعداد_ETF
+                    st.session_state["تعداد_غیر_ETF"] = تعداد_غیر_ETF
+                    st.session_state["تعداد_تحلیل_نشده"] = تعداد_تحلیل_نشده
+                    st.session_state["فهرست_تحلیل_نشده"] = فهرست_تحلیل_نشده
                     st.session_state["نمایش_نتیجه"] = True
                 else:
                     st.info("هنوز نسخه روزانه‌ای از داده‌ها ساخته نشده است؛ تحلیل مستقیم از منابع داده انجام می‌شود.")
@@ -765,9 +777,18 @@ if st.session_state.get("شروع_تحلیل", False):
                         شاخص_ها["scheme_code"] = (
                             شاخص_ها["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
                         )
-                        اطلاعات_گروه = صندوق_های_انتخابی[["scheme_code", "fund_group"]].copy()
+                        ستون_های_طرح = [
+                            ستون for ستون in [
+                                "scheme_code", "fund_group", "scheme_plan", "scheme_option",
+                                "scheme_type", "category_sub", "is_etf", "trading_type", "source"
+                            ] if ستون in صندوق_های_انتخابی.columns
+                        ]
+                        اطلاعات_گروه = صندوق_های_انتخابی[ستون_های_طرح].copy()
                         اطلاعات_گروه["scheme_code"] = (
                             اطلاعات_گروه["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
+                        )
+                        شاخص_ها["scheme_code"] = (
+                            شاخص_ها["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
                         )
                         شاخص_ها = شاخص_ها.merge(
                             اطلاعات_گروه.drop_duplicates("scheme_code"),
@@ -785,6 +806,21 @@ if st.session_state.get("شروع_تحلیل", False):
                         شاخص_ها = شاخص_ها.merge(جدول_دارایی, on="scheme_code", how="left")
 
                         تعداد_تحلیل_شده = int(شاخص_ها["scheme_code"].nunique())
+                        کدهای_تحلیل_شده = set(شاخص_ها["scheme_code"].astype(str))
+                        صندوق_های_تحلیل_نشده = صندوق_های_واجد_شرایط[
+                            ~صندوق_های_واجد_شرایط["scheme_code"].astype(str).isin(کدهای_تحلیل_شده)
+                        ]
+                        تعداد_تحلیل_نشده = int(len(صندوق_های_تحلیل_نشده))
+                        فهرست_تحلیل_نشده = [
+                            {
+                                "scheme_code": str(ردیف["scheme_code"]),
+                                "scheme_name": str(ردیف["scheme_name"]),
+                                "reason": "تاریخچه NAV برای محاسبه شاخص‌های سه‌ساله کافی یا به‌روز نیست"
+                            }
+                            for _, ردیف in صندوق_های_تحلیل_نشده.iterrows()
+                        ]
+                        تعداد_ETF = int(صندوق_های_واجد_شرایط["is_etf"].sum())
+                        تعداد_غیر_ETF = int(len(صندوق_های_واجد_شرایط) - تعداد_ETF)
                         نتیجه_کامل = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
 
                         # آلفا و بتا را برای همه صندوق‌های تحلیل‌شده دریافت می‌کنیم.
@@ -846,6 +882,10 @@ if st.session_state.get("شروع_تحلیل", False):
                         st.session_state["تعداد_دارای_nav"] = تعداد_دارای_nav
                         st.session_state["تعداد_آلفا_کل"] = تعداد_آلفا_کل
                         st.session_state["تعداد_بتا_کل"] = تعداد_بتا_کل
+                        st.session_state["تعداد_ETF"] = تعداد_ETF
+                        st.session_state["تعداد_غیر_ETF"] = تعداد_غیر_ETF
+                        st.session_state["تعداد_تحلیل_نشده"] = تعداد_تحلیل_نشده
+                        st.session_state["فهرست_تحلیل_نشده"] = فهرست_تحلیل_نشده
                         st.session_state["نمایش_نتیجه"] = True
             except Exception:
                 raise
@@ -872,8 +912,13 @@ if st.session_state.get("نمایش_نتیجه", False):
     آمار_۳.metric("صندوق دارای شاخص معتبر", st.session_state.get("تعداد_بررسی_شده", "—"))
     آمار_۴, آمار_۵, آمار_۶ = st.columns(3)
     آمار_۴.metric("صندوق دارای داده NAV", st.session_state.get("تعداد_دارای_nav", "—"))
-    آمار_۵.metric("صندوق‌های دارای آلفا", st.session_state.get("تعداد_آلفا_کل", "—"))
-    آمار_۶.metric("صندوق‌های دارای بتا", st.session_state.get("تعداد_بتا_کل", "—"))
+    آمار_۵.metric("صندوق‌های دارای آلفا", str(st.session_state.get("تعداد_آلفا_کل", "—")) + " / " + str(st.session_state.get("تعداد_بررسی_شده", "—")))
+    آمار_۶.metric("صندوق‌های دارای بتا", str(st.session_state.get("تعداد_بتا_کل", "—")) + " / " + str(st.session_state.get("تعداد_بررسی_شده", "—")))
+    آمار_۷, آمار_۸, آمار_۹ = st.columns(3)
+    آمار_۷.metric("ETF قابل معامله در بورس", st.session_state.get("تعداد_ETF", "—"))
+    آمار_۸.metric("صندوق غیر ETF", st.session_state.get("تعداد_غیر_ETF", "—"))
+    آمار_۹.metric("واجد شرایط ولی تحلیل‌نشده", st.session_state.get("تعداد_تحلیل_نشده", "—"))
+    st.caption("شناسایی ETF بر اساس نام رسمی طرح AMFI انجام می‌شود؛ صندوق‌های ETF Fund of Fund خودشان ETF نیستند.")
     st.caption("آخرین به‌روزرسانی خودکار داده‌ها: " + str(st.session_state.get("آخرین_به_روزرسانی", "در دسترس نیست")))
     تاریخ_گزارش_AUM = (
         نتیجه["aum_as_of"].dropna().max()
@@ -911,6 +956,8 @@ if st.session_state.get("نمایش_نتیجه", False):
             '<div class="fund-card"><span class="fund-rank">' + str(شماره + 1)
             + '</span> <span class="fund-name">' + نام_نمایشی
             + '</span><div class="small-note">گروه: ' + گروه_نمایشی
+            + '</div><div class="small-note">نوع معامله: '
+            + html.escape(str(ردیف.get("trading_type", "ETF" if bool(ردیف.get("is_etf", False)) else "غیر ETF")))
             + '</div><div class="small-note">دارایی تحت مدیریت: ' + دارایی_نمایشی
             + '</div><div class="fund-score">امتیاز تناسب: '
             + (("{:.1f}".format(امتیاز_صندوق)) if pd.notna(امتیاز_صندوق) else "—")
@@ -1043,6 +1090,8 @@ if st.session_state.get("نمایش_نتیجه", False):
             "امتیاز بازدهی از بازدهی یک‌ساله و سه‌ساله، امتیاز ریسک از نوسان و بیشترین افت، "
             "و کیفیت عملکرد از شارپ و سورتینو ساخته می‌شود. ۱۰ درصد امتیاز نیز به اندازه صندوق (AUM) اختصاص دارد. "
             "AUM درون همان گروه رتبه‌بندی می‌شود و در صورت نبود داده، وزن آن بین معیارهای موجود بازتوزیع می‌شود. "
+            "شارپ و سورتینو با فرض نرخ بازده بدون ریسک صفر محاسبه شده‌اند. "
+            "شاخص‌های بدهی از شاخص‌های سهامی جدا هستند و زیرگروه‌های مختلط نیز تعدیل جداگانه دارند. "
             "برای گروه‌های کم‌تعداد، امتیاز صدکی به عدد ۵۰ نزدیک می‌شود."
         )
         جدول_وزن = pd.DataFrame([
@@ -1053,27 +1102,26 @@ if st.session_state.get("نمایش_نتیجه", False):
         ], columns=["پروفایل", "بازدهی (درصد)", "ریسک (درصد)", "کیفیت (درصد)", "اندازه صندوق / AUM (درصد)"])
         st.dataframe(جدول_وزن, use_container_width=True, hide_index=True)
         جدول_تناسب_دارایی = pd.DataFrame([
-            ["محافظه‌کار", 10, 5, -10],
-            ["متوسط", 5, 5, 0],
-            ["رشدگرا", -5, 0, 5],
-            ["ریسک‌پذیر", -10, -5, 10]
-        ], columns=["پروفایل", "درآمد ثابت", "ترکیبی", "سهامی"])
-        st.markdown("**تعدیل امتیاز بر اساس نوع دارایی**")
+            ["محافظه‌کار", "+۱۰", "مختلط محافظه‌کار +۸؛ مختلط تهاجمی −۸", "سهامی −۱۰", "طلا +۱؛ نقره −۴"],
+            ["متوسط", "+۳", "مختلط متعادل +۸؛ مختلط تهاجمی +۴", "سهامی +۳", "طلا +۳؛ نقره +۲"],
+            ["رشدگرا", "−۵", "مختلط متعادل +۳؛ مختلط تهاجمی +۷", "سهامی +۷", "طلا +۵؛ نقره +۶"],
+            ["ریسک‌پذیر", "−۱۰", "مختلط متعادل +۲؛ مختلط تهاجمی +۱۰", "سهامی +۱۰", "طلا +۵؛ نقره +۷"]
+        ], columns=["پروفایل", "درآمد ثابت و شاخص بدهی", "مختلط", "سهامی و شاخص سهام", "کالایی"])
+        st.markdown("**تعدیل آموزشی امتیاز بر اساس نوع و زیرگروه دارایی**")
         st.dataframe(جدول_تناسب_دارایی, use_container_width=True, hide_index=True)
         st.caption(
-            "نوع دارایی نیز در امتیاز تناسب اثر دارد: درآمد ثابت برای محافظه‌کار، "
-            "گروه ترکیبی برای سطح متوسط و سهام برای پروفایل‌های ریسک‌پذیرتر امتیاز بیشتری می‌گیرد. "
-            "برای صندوق‌های شاخصی و کالایی، تعدیل جداگانه نوع دارایی اعمال نشده است. "
-            "این تعدیل یک فرض آموزشی است و امتیاز، ریسک مطلق صندوق را نشان نمی‌دهد."
+            "صندوق مختلط تهاجمی برای کاربر محافظه‌کار امتیاز منفی می‌گیرد و صندوق مختلط محافظه‌کار امتیاز مثبت. "
+            "شاخص‌های بدهی در کنار درآمد ثابت و شاخص‌های سهامی در کنار سهام ارزیابی می‌شوند. "
+            "این ضرایب فرض آموزشی هستند و جایگزین سنجش ریسک مطلق یا مشاوره مالی نیستند."
         )
         تاریخ_شاخص_ها = (
             نتیجه["metrics_as_of"].dropna().iloc[0]
             if "metrics_as_of" in نتیجه.columns and not نتیجه["metrics_as_of"].dropna().empty
             else "نامشخص"
         )
-        st.write("تاریخ پایان مشترک محاسبه شاخص‌ها: " + str(تاریخ_شاخص_ها))
+        st.write("تاریخ پایان مشترک محاسبه شاخص‌ها بر اساس NAVهای منتشرشده تا همان روز در هند (Asia/Kolkata): " + str(تاریخ_شاخص_ها))
         st.markdown("**منبع آلفا و بتا**")
-        st.write("Charlie Alpha API — مقادیر سه‌ساله و نام شاخص مرجع اعلام‌شده توسط سرویس؛ تناسب شاخص باید بررسی شود.")
+        st.write("Charlie Alpha API — آلفا و بتای سه‌ساله با شاخص مرجع اعلام‌شده توسط سرویس. شاخص مرجع AMFI و شاخص سند رسمی صندوق نیز جداگانه نمایش داده می‌شوند تا اختلاف‌ها قابل بررسی باشند.")
         st.markdown("**منبع دارایی تحت مدیریت (AUM)**")
         st.write("AMFI Daily Fund Performance Data از طریق فایل scheme_details_latest در Tigzig؛ مقدار AUM کل صندوق و همه طرح‌ها و گزینه‌ها را پوشش می‌دهد. واحد نمایش: ₹ Cr.")
         st.markdown("[مشاهده مستندات و API منبع](https://api.charliealpha.in/)")
@@ -1084,12 +1132,19 @@ if st.session_state.get("نمایش_نتیجه", False):
         )
         st.write("تاریخ داده آلفا و بتا: " + str(تاریخ_داده))
         if "alpha_beta_benchmark" in نتیجه.columns:
-            جدول_منبع = نتیجه[[
-                "scheme_name", "alpha_beta_benchmark", "alpha", "beta"
-            ]].copy()
+            ستون_های_مرجع = [
+                ستون for ستون in [
+                    "scheme_name", "alpha_beta_benchmark",
+                    "amfi_daily_benchmark", "ssd_benchmark_tier1_std",
+                    "alpha", "beta"
+                ] if ستون in نتیجه.columns
+            ]
+            جدول_منبع = نتیجه[ستون_های_مرجع].copy()
             جدول_منبع = جدول_منبع.rename(columns={
                 "scheme_name": "نام صندوق",
-                "alpha_beta_benchmark": "شاخص مرجع",
+                "alpha_beta_benchmark": "شاخص مرجع Charlie Alpha",
+                "amfi_daily_benchmark": "شاخص مرجع گزارش روزانه AMFI",
+                "ssd_benchmark_tier1_std": "شاخص مرجع سند رسمی صندوق",
                 "alpha": "آلفای سالانه سه‌ساله (درصد)",
                 "beta": "بتای سه‌ساله"
             })
@@ -1099,6 +1154,14 @@ if st.session_state.get("نمایش_نتیجه", False):
             st.dataframe(جدول_منبع, use_container_width=True, hide_index=True)
         for خطا in st.session_state.get("خطاهای_آلفا_بتا", []):
             st.warning("دریافت آلفا/بتا برای یک صندوق ناموفق بود: " + خطا)
+        if st.session_state.get("فهرست_تحلیل_نشده"):
+            with st.expander("صندوق‌های واجد شرایطی که به دلیل داده NAV کافی تحلیل نشدند"):
+                for صندوق_تحلیل_نشده in st.session_state["فهرست_تحلیل_نشده"]:
+                    st.caption(
+                        str(صندوق_تحلیل_نشده.get("scheme_code", ""))
+                        + " — " + str(صندوق_تحلیل_نشده.get("scheme_name", ""))
+                        + " — " + str(صندوق_تحلیل_نشده.get("reason", ""))
+                    )
     with تب_پایگاه:
         st.markdown("**ذخیره سازی اطلاعات با SQLite**")
         st.write("اطلاعات صندوق ها و شاخص های محاسبه شده در یک پایگاه داده رابطه ای ذخیره می شوند.")
