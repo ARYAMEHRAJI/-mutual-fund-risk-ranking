@@ -4,16 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "15 3 * * 1-5"
-  push:
-    branches:
-      - group-relative-ranking
-    paths:
-      - "daily_update.py"
-      - "simple_data.py"
-      - "simple_metrics.py"
-      - "simple_ranking.py"
-      - "requirements-simple.txt"
-      - ".github/workflows/refresh-simple-snapshot.yml"
 
 permissions:
   contents: write
@@ -25,10 +15,12 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 30
     steps:
       - name: دریافت کدهای پروژه
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: آماده‌سازی پایتون
         uses: actions/setup-python@v5
@@ -47,7 +39,7 @@ jobs:
       - name: دریافت و محاسبه اطلاعات همه صندوق‌ها
         run: python daily_update.py
 
-      - name: ذخیره فایل به‌روزشده در گیت‌هاب
+      - name: ذخیره امن فایل به‌روزشده در گیت‌هاب
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -56,5 +48,7 @@ jobs:
             echo "داده جدیدی برای ذخیره وجود ندارد."
           else
             git commit -m "data: refresh all mutual fund alpha and beta"
-            git push
+            git fetch origin group-relative-ranking
+            git rebase origin/group-relative-ranking
+            git push origin HEAD:group-relative-ranking
           fi
