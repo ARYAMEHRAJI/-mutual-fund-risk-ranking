@@ -67,7 +67,7 @@ def دریافت_nav_ذخیره_شده(کدها):
     return دریافت_nav(list(کدها))
 
 
-@st.cache_data(ttl=86400, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def دریافت_آلفا_بتا_مقایسه_ذخیره_شده(کدها):
     return دریافت_آلفا_بتا_از_سرویس(list(کدها), افق="3Y")
 
