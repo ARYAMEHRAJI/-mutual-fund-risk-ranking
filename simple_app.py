@@ -162,7 +162,7 @@ st.markdown('<div class="section-subtitle">پاسخی را انتخاب کن ک�
 پاسخ_ها = []
 ستون_سوال = st.columns(2)
 for شماره, سوال in enumerate(سوال_ها):
-    with ستون_سوال[شماره % 2]:
+    with ستون_سوال[شماره // 2]:
         with st.container(border=True):
             پاسخ = st.radio(
                 سوال["سوال"], سوال["گزینه"],
@@ -212,21 +212,23 @@ if st.session_state.get("شروع_تحلیل", False):
                 همه_صندوق_ها = دریافت_صندوق_ها()
                 گروه_ها = ["Large Cap", "Mid Cap", "Small Cap", "Flexi Cap", "Multi Cap", "Focused"]
 
-                # هر گروه را فقط یک بار فیلتر می کنیم تا کد کوتاه تر و خواناتر باشد.
+                # ابتدا تمام صندوق های واجد شرایط را در شش گروه جدا می کنیم.
                 صندوق_های_هر_گروه = {
                     گروه: انتخاب_صندوق_ها(همه_صندوق_ها, گروه)
                     for گروه in گروه_ها
                 }
 
-                # برای کنترل زمان دریافت NAV، حداکثر پنج صندوق از هر گروه بررسی می شوند.
+                # نام گروه را همراه هر صندوق نگه می داریم تا امتیازدهی درون گروهی باشد.
                 صندوق_های_واجد_شرایط = pd.concat(
-                    list(صندوق_های_هر_گروه.values()), ignore_index=True
-                ).drop_duplicates("scheme_code")
-
-                صندوق_های_انتخابی = pd.concat(
-                    [جدول.head(5) for جدول in صندوق_های_هر_گروه.values()],
+                    [
+                        جدول.assign(fund_group=گروه)
+                        for گروه, جدول in صندوق_های_هر_گروه.items()
+                    ],
                     ignore_index=True
                 ).drop_duplicates("scheme_code")
+
+                # همه صندوق های واجد شرایط بررسی می شوند؛ انتخاب پنج مورد اول حذف شده است.
+                صندوق_های_انتخابی = صندوق_های_واجد_شرایط.copy()
 
                 if صندوق_های_انتخابی.empty:
                     raise RuntimeError("صندوق واجد شرایطی در داده دریافتی پیدا نشد.")
@@ -237,12 +239,21 @@ if st.session_state.get("شروع_تحلیل", False):
                 تعداد_دارای_nav = int(nav["scheme_code"].nunique())
                 شاخص_ها = محاسبه_شاخص_ها(nav)
 
-                # آلفا و بتا از سرویس مستقل دریافت می شوند؛ دیگر به دریافت Nifty/Yahoo وابسته نیستند.
+                # گروه هر صندوق را به جدول شاخص ها اضافه می کنیم.
+                شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str)
+                اطلاعات_گروه = صندوق_های_انتخابی[["scheme_code", "fund_group"]].copy()
+                اطلاعات_گروه["scheme_code"] = اطلاعات_گروه["scheme_code"].astype(str)
+                شاخص_ها = شاخص_ها.merge(
+                    اطلاعات_گروه.drop_duplicates("scheme_code"),
+                    on="scheme_code",
+                    how="left"
+                )
+
+                # آلفا و بتا برای همان صندوق های دارای شاخص دریافت می شوند.
                 جدول_آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(
                     شاخص_ها["scheme_code"].astype(str).tolist(),
                     افق="3Y"
                 )
-                شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str)
                 جدول_آلفا_بتا["scheme_code"] = جدول_آلفا_بتا["scheme_code"].astype(str)
                 شاخص_ها = شاخص_ها.merge(جدول_آلفا_بتا, on="scheme_code", how="left")
 
@@ -265,7 +276,7 @@ if st.session_state.get("شروع_تحلیل", False):
                 تعداد_بتا_کل = int(شاخص_ها["beta"].notna().sum())
                 تعداد_واجد_شرایط = int(صندوق_های_واجد_شرایط["scheme_code"].nunique())
 
-                نتیجه = رتبه_بندی(شاخص_ها)
+                نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
                 ستون_رتبه = st.session_state["پروفایل"] + "_rank"
                 نتیجه = نتیجه.sort_values(ستون_رتبه).head(5).reset_index(drop=True)
                 st.session_state["نتیجه_صندوق"] = نتیجه
