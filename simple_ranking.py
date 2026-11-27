@@ -38,12 +38,12 @@ def امتیازدهی_یک_گروه(گروه):
         ["volatility_score", "drawdown_score"]
     ].mean(axis=1)
 
-    # ۳) شارپ، سورتینو و آلفای مثبت بیشتر امتیاز بالاتری می گیرند.
-    for ستون in ["sharpe", "sortino", "alpha"]:
+    # ۳) کیفیت عملکرد با نسبت شارپ و سورتینو سنجیده می شود.
+    for ستون in ["sharpe", "sortino"]:
         داده[ستون + "_score"] = تبدیل_به_امتیاز(داده, ستون)
 
     داده["quality_score"] = داده[
-        ["sharpe_score", "sortino_score", "alpha_score"]
+        ["sharpe_score", "sortino_score"]
     ].mean(axis=1)
 
     # ۴) وزن هر بخش برای چهار پروفایل سرمایه گذار.
