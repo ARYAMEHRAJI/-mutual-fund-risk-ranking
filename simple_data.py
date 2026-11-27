@@ -100,7 +100,7 @@ def دریافت_دارایی_تحت_مدیریت(کد_صندوق_ها):
         جزئیات = جزئیات[جزئیات["source"].astype(str).str.upper() == "MF"].copy()
 
     جزئیات["scheme_code"] = (
-        جزئیات["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+        جزئیات["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
     )
     جزئیات["aum_cr"] = pd.to_numeric(
         جزئیات["amfi_daily_fund_aum_cr_all_plans"], errors="coerce"
