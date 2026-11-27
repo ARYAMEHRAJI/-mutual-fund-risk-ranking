@@ -93,7 +93,7 @@ class TestFundRanking(unittest.TestCase):
                 ["Equity - Sectoral", "Equity - Thematic"]
             ).sum()
             self.assertLessEqual(sector_count, 1)
-            if profile == "Conservative":
+            if profile in ["Conservative", "Moderate"]:
                 self.assertEqual(sector_count, 0)
             self.assertLessEqual(
                 selected["fund_group"].apply(
