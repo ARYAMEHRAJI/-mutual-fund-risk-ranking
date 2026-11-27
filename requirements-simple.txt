@@ -1,9 +1,6 @@
-# کتابخانه های لازم برای اجرای نسخه ساده
+# کتابخانه های موردنیاز نسخه ساده
 pandas
 numpy
 requests
 streamlit
-cloudscraper
-altair
-
 plotly
