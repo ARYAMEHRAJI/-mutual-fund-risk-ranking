@@ -23,9 +23,9 @@ def main():
     if شاخص_ها.empty:
         raise RuntimeError("شاخص معتبری از NAV دریافت نشد.")
 
-    شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+    شاخص_ها["scheme_code"] = شاخص_ها["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
     گروه_ها = واجد_شرایط[["scheme_code", "fund_group"]].copy()
-    گروه_ها["scheme_code"] = گروه_ها["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+    گروه_ها["scheme_code"] = گروه_ها["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
     شاخص_ها = شاخص_ها.merge(گروه_ها.drop_duplicates("scheme_code"), on="scheme_code", how="left")
 
     نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
@@ -37,7 +37,7 @@ def main():
     کدهای_نهایی = list(dict.fromkeys(کدهای_نهایی))
     print(f"دریافت آلفا و بتا برای {len(کدهای_نهایی)} صندوق منتخب...")
     آلفا_بتا = دریافت_آلفا_بتا_از_سرویس(کدهای_نهایی, افق="3Y")
-    آلفا_بتا["scheme_code"] = آلفا_بتا["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+    آلفا_بتا["scheme_code"] = آلفا_بتا["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
     نتیجه = نتیجه.merge(آلفا_بتا, on="scheme_code", how="left")
 
     for ستون in ["alpha", "beta"]:
