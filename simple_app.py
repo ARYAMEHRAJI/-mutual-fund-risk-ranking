@@ -292,7 +292,8 @@ if صفحه_فعال == "مقایسه صندوق‌ها":
                     "دسته‌بندی صندوق",
                     گزینه_های_دسته,
                     key="مقایسه_دسته_" + str(شماره),
-                    accept_new_options=False
+                    accept_new_options=False,
+                    filter_mode=None
                 )
                 if دسته_انتخابی == "انتخاب دسته‌بندی":
                     st.selectbox(
@@ -300,7 +301,8 @@ if صفحه_فعال == "مقایسه صندوق‌ها":
                         ["ابتدا دسته‌بندی را انتخاب کن"],
                         key="مقایسه_نام_خالی_" + str(شماره),
                         disabled=True,
-                        accept_new_options=False
+                        accept_new_options=False,
+                    filter_mode=None
                     )
                 else:
                     گروه_انگلیسی = نگاشت_دسته_به_انگلیسی[دسته_انتخابی]
@@ -317,7 +319,8 @@ if صفحه_فعال == "مقایسه صندوق‌ها":
                         list(نگاشت_نام_صندوق.keys()),
                         format_func=lambda کد, نگاشت=نگاشت_نام_صندوق: نگاشت.get(کد, کد),
                         key="مقایسه_صندوق_" + str(شماره),
-                        accept_new_options=False
+                        accept_new_options=False,
+                    filter_mode=None
                     )
                     ردیف_صندوق = صندوق_های_این_دسته[
                         صندوق_های_این_دسته["scheme_code"].astype(str) == str(کد_انتخابی)
