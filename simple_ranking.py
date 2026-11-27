@@ -5,7 +5,10 @@ import pandas as pd
 
 def تبدیل_به_امتیاز(جدول, ستون, بیشتر_بهتر=True):
     # رتبه صدکی باعث می شود امتیاز هر صندوق فقط با هم گروهی هایش مقایسه شود.
-    رتبه = جدول[ستون].rank(pct=True, ascending=بیشتر_بهتر, method="average")
+    مقدارها = pd.to_numeric(جدول[ستون], errors="coerce")
+    if مقدارها.notna().sum() <= 1:
+        return pd.Series(50.0, index=جدول.index).where(مقدارها.notna())
+    رتبه = مقدارها.rank(pct=True, ascending=بیشتر_بهتر, method="average")
     return رتبه * 100
 
 
