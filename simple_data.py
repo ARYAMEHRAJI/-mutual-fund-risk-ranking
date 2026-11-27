@@ -49,20 +49,72 @@ def تمیزکردن_نام(مقدار):
     متن = " ".join(متن.split())
 
     # پیشوند گروه اصلی را حذف می‌کنیم تا تطبیق فقط با نام زیرگروه باشد.
-    for پیشوند in ["equity scheme ", "debt scheme ", "equity ", "debt ", "hybrid "]:
+    for پیشوند in ["equity scheme ", "debt scheme ", "hybrid scheme ", "other scheme ", "equity ", "debt ", "hybrid ", "other "]:
         if متن.startswith(پیشوند):
             متن = متن[len(پیشوند):].strip()
     return متن
 
 
-def پیدا_کردن_گروه(نام_دسته):
+def پیدا_کردن_گروه(نام_دسته, نام_صندوق=""):
     نام = تمیزکردن_نام(نام_دسته)
+    نام_کامل = تمیزکردن_نام(str(نام_دسته) + " " + str(نام_صندوق))
+
+    # دسته‌های جدید بازار هند؛ ابتدا طلا و نقره را جدا می‌کنیم تا با ETF شاخصی اشتباه نشوند.
+    if "gold" in نام_کامل:
+        return "Other - Gold"
+    if "silver" in نام_کامل:
+        return "Other - Silver"
+    if "sectoral" in نام or "sector fund" in نام:
+        return "Equity - Sectoral"
+    if "thematic" in نام or "theme fund" in نام:
+        return "Equity - Thematic"
+    if "index" in نام or "etf" in نام:
+        return "Other - Index"
 
     for گروه, نام_های_مجاز in گروه_ها.items():
         if نام in نام_های_مجاز:
             return گروه
 
     return None
+
+
+def دریافت_دارایی_تحت_مدیریت(کد_صندوق_ها):
+    """
+    دریافت AUM روزانه کل صندوق (همه طرح‌ها و گزینه‌ها) از داده AMFI.
+    واحد مقدار خروجی: کرور روپیه هند.
+    """
+    آدرس = "https://api.tigzig.com/mf/v1/download/scheme_details_latest"
+    پاسخ = requests.get(آدرس, params={"format": "csv.gz"}, timeout=120)
+    پاسخ.raise_for_status()
+
+    جزئیات = pd.read_csv(io.BytesIO(پاسخ.content), compression="gzip", low_memory=False)
+
+    ستون_های_لازم = [
+        "scheme_code", "amfi_daily_fund_aum_cr_all_plans", "amfi_daily_aum_date"
+    ]
+    ستون_های_گم_شده = [ستون for ستون in ستون_های_لازم if ستون not in جزئیات.columns]
+    if ستون_های_گم_شده:
+        raise ValueError("ستون‌های دارایی تحت مدیریت در منبع پیدا نشد: " + ", ".join(ستون_های_گم_شده))
+
+    if "source" in جزئیات.columns:
+        جزئیات = جزئیات[جزئیات["source"].astype(str).str.upper() == "MF"].copy()
+
+    جزئیات["scheme_code"] = (
+        جزئیات["scheme_code"].astype(str).str.replace(r"\\.0$", "", regex=True)
+    )
+    جزئیات["aum_cr"] = pd.to_numeric(
+        جزئیات["amfi_daily_fund_aum_cr_all_plans"], errors="coerce"
+    )
+    جزئیات["aum_as_of"] = جزئیات["amfi_daily_aum_date"].astype(str)
+
+    کدها = [
+        str(کد).strip().removesuffix(".0") for کد in کد_صندوق_ها
+    ]
+    خروجی = جزئیات[جزئیات["scheme_code"].isin(کدها)][
+        ["scheme_code", "aum_cr", "aum_as_of"]
+    ].drop_duplicates("scheme_code")
+
+    return خروجی.reset_index(drop=True)
 
 
 def دریافت_صندوق_ها():
@@ -107,8 +159,25 @@ def انتخاب_صندوق_ها(صندوق_ها):
     if دسته_ها.isna().all():
         raise ValueError("ستون دسته‌بندی صندوق در فایل منبع پیدا نشد.")
 
-    داده["fund_group"] = دسته_ها.apply(پیدا_کردن_گروه)
-    انتخاب = فعال & مستقیم & رشد & باز & سابقه & داده["fund_group"].notna()
+    داده["fund_group"] = [
+        پیدا_کردن_گروه(دسته, نام)
+        for دسته, نام in zip(دسته_ها, داده["scheme_name"])
+    ]
+
+    # صندوق‌های فعال، باز و باسابقه؛ ETFها و صندوق‌های شاخصی ممکن است طرح Direct نداشته باشند.
+    طرح_مجاز = مستقیم | (
+        داده["fund_group"].astype(str).str.startswith("Other -")
+        & داده["scheme_plan"].astype(str).str.lower().str.strip().isin(["other", "direct"])
+    )
+    گزینه_مجاز = رشد | (
+        داده["fund_group"].astype(str).str.startswith("Other -")
+        & داده["scheme_option"].astype(str).str.lower().str.strip().eq("other")
+    )
+    منبع_مجاز = (
+        داده["source"].astype(str).str.upper().eq("MF")
+        if "source" in داده.columns else pd.Series(True, index=داده.index)
+    )
+    انتخاب = فعال & طرح_مجاز & گزینه_مجاز & باز & سابقه & منبع_مجاز & داده["fund_group"].notna()
 
     نتیجه = داده[انتخاب].copy()
     نتیجه["scheme_code"] = نتیجه["scheme_code"].astype(str).str.replace(r"\.0$", "", regex=True)
