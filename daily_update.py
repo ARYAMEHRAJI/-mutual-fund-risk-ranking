@@ -41,7 +41,7 @@ def main():
     نتیجه = رتبه_بندی(شاخص_ها, ستون_گروه="fund_group")
     کدهای_نهایی = []
     for پروفایل in ["Conservative", "Moderate", "Growth", "Aggressive"]:
-        بهترین = نتیجه.dropna(subset=[پروفایل + "_rank"]).sort_values(پروفایل + "_rank").head(5)
+        بهترین = نتیجه.dropna(subset=[پروفایل + "_score"]).sort_values(پروفایل + "_score", ascending=False).head(5)
         کدهای_نهایی.extend(بهترین["scheme_code"].astype(str).tolist())
 
     کدهای_نهایی = list(dict.fromkeys(کدهای_نهایی))
